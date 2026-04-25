@@ -298,12 +298,12 @@ git clone -b interactive https://github.com/bobbyroe/vertex-earth.git reference/
 - [x] Cap point cloud animation at 30fps on mobile (fpsLimit = 1000/30)
 - [ ] Test pinch-zoom disabled, drag-rotate works
 
-#### 7.5 — Integration QA
-- [ ] No console errors on mount/unmount
-- [ ] Drag-rotate doesn't fight GSAP ScrollTrigger scroll listener
-- [ ] Bloom postprocessing still renders correctly with new mesh layers
-- [ ] AuroraCanvas z-index still correct above EarthCanvas
-- [ ] 60fps desktop, 30fps mobile
+#### 7.6 — Scroll Journey (Cinematic)
+- [x] **Starting Point (0%)**: Globe positioned under "WORLDPORT" hero text, exactly **30% visible (70% hidden)** at the bottom of the viewport. Zoomed in to cover **60% of viewport width**.
+- [x] **Mid Point (50%)**: Globe transitions to absolute **center** of viewport with **100% baseline size**.
+- [x] **End Point (100%)**: Globe slides to a **corner position** (40% width, 70% height of viewport).
+- [x] **Smooth Scrub**: All transitions linked to total scroll distance via GSAP ScrollTrigger for 1:1 tactile feedback.
+- [x] **Drag Interaction**: OrbitControls target updated per frame to allow rotation at any position.
 
 ---
 
