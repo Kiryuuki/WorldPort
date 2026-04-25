@@ -1,0 +1,494 @@
+# WorldPort — Build Instructions for Gemini
+> AI agent build spec. Read this fully before touching any file.
+
+---
+
+## What This Is
+
+**WorldPort** is not a portfolio. It is a personal website that tells a story.
+
+The visitor is not a recruiter scanning a CV. They are a curious human who stumbled in. They should leave knowing:
+- Who Aldrin is (not what he does on a resume)
+- How he thinks about problems
+- That he builds things that actually work — and writes honestly about why and how
+- That the site itself *is* the proof of work
+
+Every page is a blog entry in disguise. Every case study is a story with a problem, a villain, a hack, and an outcome. The galaxy aesthetic — rotating Earth, pixel stars, asteroid cursor — is not decoration. It is the metaphor: one person, floating in space, building signal from noise.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 15 (App Router) |
+| Styling | Tailwind CSS v4 |
+| Animations | GSAP + ScrollTrigger + Lenis (smooth scroll) |
+| 3D / Canvas | Three.js (Earth), Canvas 2D (stars, cursor) |
+| Content | MDX (blog posts / case studies as `.mdx` files) |
+| CMS | File-based — no external CMS |
+| Fonts | Bandeins Strange (hero display) → fallback: Space Grotesk |
+| Deployment | Docker → GHCR (GitHub Container Registry) |
+| CI/CD | GitHub Actions |
+
+---
+
+## Visual Identity (Do Not Deviate)
+
+- **Background**: `#010611` (near-black deep space) with multi-layered, moving nebula clouds (cyan/blue/purple)
+- **Text**: `#ffffff` primary, `rgba(255,255,255,0.55)` secondary
+- **Glass effect**: `backdrop-filter: blur(24px) saturate(1.5)` + `background: rgba(255,255,255,0.03)` + `border: 1px solid rgba(255,255,255,0.1)`
+- **Accent**: `rgba(100,140,255,0.8)` for links and highlights
+- **Border radius**: `100px` for buttons, `20px` for cards, `15px` for nav
+- **Cursor**: Custom asteroid particle effect — NO default browser cursor anywhere on the site
+
+### Canvas Effects (Required)
+1. **Star field** — `global-shimmer-canvas` fixed overlay. Twinkling stars + animated nebula layers (using noise shaders or transparent gradients).
+2. **Cinematic Earth** — Three.js scene. Massive scale (bottom 40% of viewport). Fresnel atmosphere glow, day/night terminator, and UnrealBloom postprocessing. Earth position: `x:0, y:-50, z:800` (adjustable for viewport).
+3. **Asteroid cursor** — On `mousemove`, spawn jagged polygon particles that fall with gravity, rotate, and fade.
+
+---
+
+## Site Structure
+
+```
+/                  → Hero (animated) + Who I Am (short)
+/about             → The full story — origin, philosophy, how I work
+/work              → Index of all case studies
+/work/[slug]       → Individual case study (MDX-powered, storytelling format)
+/blog              → Optional: raw thoughts, experiments, failures
+/contact           → One line + email + links. No form needed.
+```
+
+---
+
+## Content Philosophy
+
+### Every Case Study Must Have:
+1. **The Hook** — one sentence that makes you want to read. Not "I built an automation." More like "My client was drowning in 400 unread leads a day. I fixed it in a weekend."
+2. **The Problem** — real pain, real numbers, real frustration. Make the reader feel it.
+3. **The Villain** — what was broken. Manual process, bad tooling, human bottleneck.
+4. **The Build** — how I thought about it, what I tried, what failed, what worked. Show the thinking, not just the result.
+5. **The Stack** — tools used, why each one, any tradeoffs made.
+6. **The Outcome** — concrete results. Time saved, money, scale. If unknown, say so honestly.
+7. **What I'd Do Differently** — this is the trust-builder. Showing reflection is rare.
+
+### Tone
+- First person, conversational, direct
+- No buzzwords ("leverage", "synergy", "solution")
+- Humor is allowed — dry, nerdy, self-aware
+- Never undersell, never oversell
+- Treat the reader as smart
+
+---
+
+## Phase 1 — Foundation
+
+**Goal**: Working Next.js project with routing, canvas effects, and MDX support.
+
+### Tasks
+- [x] `npx create-next-app@latest worldport --app --tailwind --typescript`
+- [x] Install deps: `three gsap lenis @next/mdx @mdx-js/react gray-matter`
+- [x] Configure `next.config.ts` for MDX and standalone output
+- [x] Set up global CSS variables (colors, glass, fonts)
+- [x] Implement `StarCanvas` component — fixed overlay, twinkling stars
+- [x] Implement `CursorCanvas` component — asteroid particle cursor, hides native cursor globally
+- [x] Implement `EarthCanvas` component (Three.js) — rotating globe with bloom
+  - Use `earth.js` pattern: scene, camera, renderer, composer, UnrealBloom
+  - Load day/night textures from `/public/textures/`
+  - Wire GSAP ScrollTrigger to tilt/scroll Earth on hero scroll
+- [x] Implement `GlassNav` component — fixed, blur backdrop, links, CTA button
+- [x] Set up Lenis smooth scroll, integrate with GSAP
+- [x] Configure MDX pipeline: `content/work/*.mdx` → `/work/[slug]` routes
+- [x] Create `lib/posts.ts` — reads MDX frontmatter for index pages
+
+**Deliverable**: `localhost:3000` shows hero with live Earth, stars, asteroid cursor, and nav.
+
+---
+
+## Phase 2 — Pages & Content
+
+**Goal**: All routes populated, first two case studies written.
+
+### Tasks
+- [ ] **Hero (`/`)** — Fullscreen. `h1` with name. Subtitle: what I do in 8 words max. Two CTAs: "See my work" + "Read my story". Scroll indicator.
+- [ ] **Who I Am strip** — Below hero fold. Short paragraph, honest, no fluff. Links to `/about`.
+- [ ] **Work index (`/work`)** — Card grid of case studies. Each card: title, one-line hook, stack tags, read time.
+- [ ] **About (`/about`)** — Long-form storytelling page. Not a resume. Sections:
+  - Origin (why I got into this)
+  - How I work (philosophy, solo operator, async-first)
+  - Tools I trust and why
+  - What I'm building now
+  - Honest section: "What I'm not"
+- [ ] **Contact (`/contact`)** — Minimal. One line intro. Email. GitHub. LinkedIn. No form.
+- [ ] **Write case study #1**: AI Lead Qualification Funnel
+  - Client: unnamed (freelance)
+  - Problem: 400+ leads/day, no triage, sales team overwhelmed
+  - Build: n8n → Claude API scoring → Supabase → Slack alerts
+  - Outcome: 80% reduction in manual review time
+- [ ] **Write case study #2**: YouTube-to-Knowledge-Base Pipeline
+  - Problem: Hours of automation content, no searchable memory
+  - Build: n8n → YouTube transcript → Claude summary → Obsidian vault
+  - Outcome: Personal knowledge base that grows automatically
+- [ ] **Write case study #3**: WorldPort itself
+  - Problem: Every portfolio looks the same. Mine shouldn't.
+  - Build: this site, this stack, this philosophy
+  - Meta-entry: the site is its own case study
+
+**Deliverable**: Full site navigable, two real case studies live, storytelling tone consistent.
+
+---
+
+## Changelog
+
+### 2025-04-25 — Aurora Rebuild + Stars Fix Pass 4 (Dash)
+- AuroraCanvas: full rewrite using Three.js sprites (no canvas2D)
+  - Separate Three.js scene + renderer with alpha:true, screen blend via CSS mixBlendMode on container div
+  - 6 curtain columns: wide base wash, bright spike, cyan shimmer, white filament, secondary band, soft wash
+  - Each curtain = N sprite segments stacked vertically, AdditiveBlending, sine-wave lateral undulation
+  - Opacity envelope: fade in from base, full in mid-band, fade at top per segment
+  - Global breathe pulse per curtain + height-modulated shimmer at top
+  - No three-nebula dep needed — pure Three.js sprites
+- StarCanvas: fixed invisible bug
+  - Was: `globalCompositeOperation: screen` on transparent canvas = nebulas invisible
+  - Fix: fill bg with `#010611` each frame, use `source-over` throughout
+  - Removed `mixBlendMode: screen` from canvas element (was fighting the fill)
+
+### 2025-04-25 — Aurora + Z-index + Shader Pass 3 (Dash)
+- Z-stack fixed: Stars z:1 screen blend, Earth z:2, Aurora z:3, Cursor+Nav z:above, main z:10
+- StarCanvas: restored `mixBlendMode: screen` — was invisible against dark bg without it
+- Night shader: removed `* 0.6` dim — night texture now full opacity (city lights show)
+- Cloud shader: `cloudVis = mix(cloudAlpha*0.2, cloudAlpha*0.85, dayFactor)` — transparent on night side, opaque on day
+- AuroraCanvas: new component — 8 overlapping curtain rays, sine-wave undulation, screen blend, global pulse breathe
+  - Colors: green dominant (20,200,90), cyan-teal (0,200,160), purple fringe (40,80,200)
+  - Positioned left side matching Mango ref, base anchored at y:72% (horizon)
+  - layout.tsx: added AuroraCanvas import + render order StarCanvas→EarthCanvas→AuroraCanvas→CursorCanvas
+
+### 2025-04-25 — Globe + Stars Pass 2 (Dash)
+- Bloom: strength 1.8→0.35, threshold 0.05→0.7, added ACESFilmic tonemapping at exposure 0.6 — kills white blowout
+- Camera: FOV 45→35 (tighter lens = more cinematic), z 1200→1800
+- RADIUS: 500→320 — globe ~25-30% of viewport height per spec
+- Earth y position: `-(RADIUS * 1.55)` — horizon at bottom 30%, top curve visible mid-screen
+- Night texture: corrected filename `earth-night.jpg` → `2k_earth_nightmap.jpg`
+- Cloud texture: corrected filename `earth-clouds.jpg` → `2k_earth_clouds.jpg`
+- Shader: smoothstep terminator (was clamp), cloud overlay baked into earth shader + separate cloud mesh
+- Atmosphere: 3-layer system (R+12 cyan rim, R+40 mid, R+100 corona)
+- StarCanvas: full rewrite — 3 parallax layers (0.008/0.018/0.035 speed), slow directional pan simulates orbital revolution, cross sparkle on bright stars, blue-white tint, seamless wrap
+
+### 2025-04-25 — EarthCanvas Overhaul (Dash)
+- Replaced `MeshStandardMaterial` with custom day/night GLSL shader (`ShaderMaterial`)
+- Day/night terminator blending via dot product against `sunDir` uniform
+- Night side falls back to deep blue `vec4(0.02, 0.04, 0.12)` if `earth-night.jpg` missing
+- Removed static scroll-snapped rotation — added continuous `BASE_ROT_SPEED = 0.0008` ambient spin
+- Clouds drift at 1.15× earth speed for parallax effect
+- Fresnel atmosphere: `FrontSide` additive blending, rim = `pow(1 - dot, 3.5)` cyan-blue
+- Added outer halo sphere (R+80) for softer atmospheric glow corona
+- Earth position `y: -420` (was -580) — shows more globe like reference sites
+- Added `rimLight` blue fill from opposite sun direction
+- Capped pixel ratio at 2, proper `cancelAnimationFrame` + `renderer.dispose()` cleanup
+- Missing textures: still need `earth-night.jpg` + `earth-clouds.jpg` in `/public/textures/`
+  - Source: https://www.solarsystemscope.com/textures/
+
+---
+
+## Phase 3 — Polish & Performance
+
+**Goal**: Production-grade. Fast. Accessible. Memorable.
+
+### Tasks
+- [x] Add GSAP entrance animations: hero text stagger, section reveals on scroll
+- [x] Add page transitions (Lenis + GSAP timeline on route change)
+- [x] Optimize Earth canvas: mobile FPS cap at 24fps
+- [x] Optimize star canvas: pixel ratio awareness, resize debounce
+- [ ] Add `og:image` generation per case study (Next.js `ImageResponse`)
+- [ ] SEO: `metadata` export on all pages, sitemap, robots.txt
+- [ ] Lighthouse audit → target 90+ on all metrics (perf, a11y, SEO)
+- [ ] Add `prefers-reduced-motion` media query — disable canvas animations gracefully
+- [ ] Typography audit: consistent scale, line heights, spacing tokens
+- [ ] Mobile pass: nav collapses to hamburger, Earth resizes, layout reflows correctly
+- [ ] 404 page: space-themed, in character
+
+**Deliverable**: Lighthouse 90+. No layout bugs mobile/desktop. Animations feel intentional.
+
+---
+
+---
+
+## Phase 5 — Cinematic Fidelity
+
+**Goal**: Elevate the visual atmosphere to match high-end creative benchmarks.
+
+### Tasks
+- [x] **Nebula Starfield**: Update `StarCanvas` to include moving "nebula clouds" (using Canvas 2D gradients or noise shaders).
+- [x] **Atmospheric Fresnel**: Add a glowing atmosphere shell to the Three.js Earth model.
+- [x] **Advanced GSAP Masks**: Implement "mask" reveal animations where text slides up into view from an invisible line.
+- [x] **Floating UI Elements**: Add bottom-corner "pills" for global status/actions (e.g., Email, Easter Egg).
+- [x] **Refined Glassmorphism**: Tune CSS tokens for higher blur and saturation.
+
+---
+
+## Phase 6 — Advanced Storytelling
+
+**Goal**: Immersive interaction and unconventional content discovery.
+
+### Tasks
+- [ ] **Scroll-Linked Spin**: Link the Earth's rotation directly to scroll progress for a high-parallax effect.
+- [ ] **Solar System Projects**: (Optional) Alternative view in `/work` where projects are planets in a solar system.
+- [ ] **Character Reveal**: Add "typewriter" or character-by-character reveals for major headings.
+- [ ] **Dynamic Soundscape**: (Optional) Subtle ambient space hum/wind that triggers on user interaction.
+
+---
+
+## Phase 7 — Interactive Earth (Vertex/Point Globe)
+
+**Goal**: Upgrade `EarthCanvas` to support drag-rotate via OrbitControls and add the dot/point-cloud overlay effect from bobbyroe's vertex-earth repo.
+
+**Reference**: `wiki/threejs-interactive-vertex-earth.md`
+Source repo (interactive branch): https://github.com/bobbyroe/vertex-earth/tree/interactive
+YouTube walkthrough: https://www.youtube.com/watch?v=XaDQI1HmoOQ
+Texture source: https://planetpixelemporium.com/earth.html
+
+### Strategy: Option B — Augment Existing Globe
+
+Do NOT replace current `EarthCanvas` (already has bloom, atmosphere, fresnel, day/night shader). Layer on top:
+1. Add `OrbitControls` for drag-rotate interaction
+2. Add elevation-displaced `Points` mesh as dot-earth overlay
+3. Use `alphaMap` (land mask) to cull ocean dots — land-only points
+
+Clone repo for reference only (do not use as project base):
+```bash
+git clone -b interactive https://github.com/bobbyroe/vertex-earth.git reference/vertex-earth
+```
+
+### Tasks
+
+#### 7.1 — OrbitControls Integration
+- [x] Import `OrbitControls` from `three-stdlib` (three@0.184 project — stdlib has it)
+- [x] Verify Three.js import path compatibility (three-stdlib/controls/OrbitControls confirmed)
+- [x] Wire controls to `renderer.domElement` inside `useEffect`
+- [x] Set `controls.enableDamping = true`, `dampingFactor = 0.05`
+- [x] Set `controls.autoRotate = true`, `autoRotateSpeed = 0.3`
+- [x] Set `controls.enableZoom = false`, `controls.enablePan = false`
+- [x] Call `controls.update()` inside animation loop
+- [x] Add `controls.dispose()` to cleanup on unmount
+- [ ] Test: drag rotates globe; releases smoothly with damping
+
+#### 7.2 — Point Cloud Dot-Earth Overlay
+- [x] Clone reference repo: not needed — shader logic studied from wiki + adapted directly
+- [x] Study `src/` shader files — elevation displacement + alpha cull pattern implemented
+- [x] Add `IcosahedronGeometry(RADIUS+2, 12)` as Points layer (mobile: detail 8)
+- [x] Load elevation map: `/public/textures/earth-bump.jpg` (graceful fallback on missing)
+- [x] Load alpha/land mask: `/public/textures/earth-alpha.jpg` (graceful fallback on missing)
+- [x] Write vertex shader: spherical UV projection, normal displacement by elevation, PointSize
+- [x] Write fragment shader: `discard` if `vVisible < 0.4` (ocean cull), circular point, soft edge
+- [x] Wire `ShaderMaterial` with uElevation + uAlpha + uTime + uPointSize uniforms
+- [x] Layer over existing sphere with AdditiveBlending, depthWrite:false
+- [x] Point color: cyan-teal (low elev) → white (mountains) via mix()
+
+#### 7.3 — Texture Additions
+- [x] Elevation map: copied from `vertex-earth-main/src/01_earthbump1k.jpg` → `/public/textures/earth-bump.jpg`
+- [x] Spec/alpha map: copied from `vertex-earth-main/src/02_earthspec1k.jpg` → `/public/textures/earth-spec.jpg`
+  - Note: spec map used as alpha — ocean=white(1.0) → alpha=1-spec=0 → ocean dots invisible (bobbyroe pattern)
+- [x] circle.png: copied from reference → `/public/textures/circle.png` (reference only, not used in shader)
+- [ ] Optimize: compress to WebP if > 500KB (low priority, 1k textures are small)
+
+#### 7.4 — Mobile + Performance
+- [x] OrbitControls touch: `ONE: THREE.TOUCH.ROTATE` on mobile, pan disabled
+- [x] Reduce `IcosahedronGeometry` detail to 8 on mobile (from 12)
+- [x] Cap point cloud animation at 30fps on mobile (fpsLimit = 1000/30)
+- [ ] Test pinch-zoom disabled, drag-rotate works
+
+#### 7.5 — Integration QA
+- [ ] No console errors on mount/unmount
+- [ ] Drag-rotate doesn't fight GSAP ScrollTrigger scroll listener
+- [ ] Bloom postprocessing still renders correctly with new mesh layers
+- [ ] AuroraCanvas z-index still correct above EarthCanvas
+- [ ] 60fps desktop, 30fps mobile
+
+---
+
+## Phase 4 — Dockerize & CI/CD
+
+**Goal**: Every `git push` to `main` builds a new Docker image and pushes to GHCR.
+
+### Docker Setup
+
+**`Dockerfile`** (multi-stage):
+```dockerfile
+# Stage 1: deps
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+# Stage 2: build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+# Stage 3: runner
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+**`next.config.ts`** must include:
+```ts
+output: 'standalone'
+```
+
+**`.dockerignore`**:
+```
+node_modules
+.next
+.git
+*.md
+.env*
+```
+
+### GitHub Actions — `.github/workflows/docker.yml`
+
+```yaml
+name: Build & Push to GHCR
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/worldport
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+```
+
+### Tasks
+- [ ] Create `Dockerfile` (multi-stage, as above)
+- [ ] Add `output: 'standalone'` to `next.config.ts`
+- [ ] Create `.dockerignore`
+- [ ] Create `.github/workflows/docker.yml`
+- [ ] Create GitHub repo: `aldrinroxas/worldport` (or under your org)
+- [ ] Enable GHCR on repo — no extra setup needed, `GITHUB_TOKEN` auto-scoped
+- [ ] Test local build: `docker build -t worldport . && docker run -p 3000:3000 worldport`
+- [ ] Push to GitHub → verify Action runs → verify image appears at `ghcr.io/[username]/worldport`
+- [ ] Optional: add Watchtower or Dokploy hook on homelab to auto-pull `latest` on push
+
+**Deliverable**: `git push` → GitHub Action fires → Docker image tagged `latest` + SHA pushed to GHCR → homelab pulls and runs new version automatically.
+
+---
+
+## Repo Structure
+
+```
+worldport/
+├── .github/
+│   └── workflows/
+│       └── docker.yml
+├── app/
+│   ├── layout.tsx          ← global fonts, canvas wrappers, Lenis init
+│   ├── page.tsx            ← hero
+│   ├── about/page.tsx
+│   ├── work/
+│   │   ├── page.tsx        ← case study index
+│   │   └── [slug]/page.tsx ← dynamic MDX route
+│   └── contact/page.tsx
+├── components/
+│   ├── canvas/
+│   │   ├── StarCanvas.tsx
+│   │   ├── EarthCanvas.tsx
+│   │   └── CursorCanvas.tsx
+│   ├── nav/GlassNav.tsx
+│   └── ui/                 ← buttons, cards, glass components
+├── content/
+│   └── work/
+│       ├── lead-funnel.mdx
+│       ├── yt-knowledge-base.mdx
+│       └── worldport.mdx   ← meta case study
+├── lib/
+│   └── posts.ts
+├── public/
+│   └── textures/           ← earth day/night texture maps
+├── Dockerfile
+├── .dockerignore
+├── next.config.ts
+├── tailwind.config.ts
+└── package.json
+```
+
+---
+
+## Earth Texture Sources (Free)
+- Day map: https://www.solarsystemscope.com/textures/ (8K Earth Day)
+- Night map: same source (Earth Night)
+- Cloud map: same source (Earth Clouds)
+- Save to `/public/textures/earth-day.jpg`, `earth-night.jpg`, `earth-clouds.jpg`
+
+---
+
+## Definition of Done
+
+A phase is done when:
+- Code runs without errors
+- Feature works on both mobile and desktop
+- No console errors or warnings
+- Committed and pushed to `main`
+- Docker image builds successfully (Phase 4+)
+
+The site is done when a stranger reads it and says "I want to work with this person" — not because of the list of tools, but because of how they think.
+
+---
+
+## Notes
+- Keep MDX frontmatter consistent: `title`, `slug`, `date`, `stack[]`, `hook`, `readTime`
+- Case studies are the product. Write them well.
+- The galaxy theme is load-bearing for the brand. Don't simplify it out.
+- Built by Aldrin Roxas, Pasig City, PH — solo operator, automation architect.
+
+---
+*— Minis*

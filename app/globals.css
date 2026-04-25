@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #010611;
+  --color-foreground: #ffffff;
+  --color-secondary: rgba(255, 255, 255, 0.55);
+  --color-accent: rgba(100, 140, 255, 0.7);
+  
+  --radius-button: 100px;
+  --radius-card: 20px;
+  --radius-nav: 15px;
+
+  --font-display: "Bandeins Strange", "Space Grotesk", sans-serif;
+  --font-sans: "Space Grotesk", sans-serif;
+}
+
+:root {
+  --background: #010611;
+  --foreground: #ffffff;
+  --secondary: rgba(255, 255, 255, 0.55);
+  --accent: rgba(100, 140, 255, 0.7);
+  
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(24px) saturate(1.5);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Glassmorphism Utility */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+}
+
+/* Hide native cursor globally as per instructions */
+* {
+  cursor: none !important;
+}
+
+/* Transitions */
+a, button {
+  transition: all 0.3s ease;
+  cursor: none !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
