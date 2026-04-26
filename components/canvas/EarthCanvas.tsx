@@ -36,11 +36,11 @@ export const EarthCanvas: React.FC = () => {
     // Camera starts looking at globe center (0,0,0)
     // Offset Y downward so globe appears anchored at bottom of viewport
     const RADIUS = 420; // bigger than before — fills more of the viewport
-    const CAM_Z  = 1600;
-    const CAM_Y  = RADIUS * 0.6; // push camera up so globe horizon shows at ~40% from bottom
+    const CAM_Z = 1600;
+    const CAM_Y = RADIUS * 0.6; // push camera up so globe horizon shows at ~40% from bottom
 
     const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 12000);
-    camera.position.set(0, CAM_Y, CAM_Z);
+    camera.position.set(0, 0, CAM_Z); // Camera centered on origin (all offsets via moveState)
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -50,20 +50,16 @@ export const EarthCanvas: React.FC = () => {
     renderer.toneMappingExposure = 0.65;
     container.appendChild(renderer.domElement);
 
-    // ─── OrbitControls ───────────────────────────────────────────────────────
-    // Target = globe center = world origin
-    // GSAP will adjust camera.position.y offset, not the target,
-    // so drag always orbits correctly around the globe
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, 0);
-    controls.enableDamping  = true;
-    controls.dampingFactor  = 0.04;
-    controls.autoRotate     = true;
-    controls.autoRotateSpeed = 0.6;
-    controls.enableZoom     = false;
-    controls.enablePan      = false;
-    controls.minPolarAngle  = Math.PI * 0.2;  // don't let user flip over north pole
-    controls.maxPolarAngle  = Math.PI * 0.9;  // don't go under south pole
+    controls.target.set(0, 0, 0); // Always target the globe at origin
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.2; // Calmer rotation
+    controls.enableZoom = false;
+    controls.enablePan = false;
+    controls.minPolarAngle = Math.PI * 0.1;
+    controls.maxPolarAngle = Math.PI * 0.95;
     if (isMobile) {
       controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_ROTATE };
     }
@@ -85,11 +81,11 @@ export const EarthCanvas: React.FC = () => {
     globeGroup.add(new THREE.Mesh(wireGeo, wireMat));
 
     // 2. Point cloud — bobbyroe exact shader
-    const colorMap = loader.load("/textures/earth-color.jpg");
-    const elevMap  = loader.load("/textures/earth-bump.jpg");
+    const colorMap = loader.load("/textures/earth-bg-day.png");
+    const elevMap = loader.load("/textures/earth-bump.jpg");
     const alphaMap = loader.load("/textures/earth-spec.jpg");
 
-    const icoDetail = isMobile ? 48 : 92;
+    const icoDetail = isMobile ? 64 : 120;
     const pointsGeo = new THREE.IcosahedronGeometry(RADIUS, icoDetail);
 
     const vertexShader = `
@@ -128,20 +124,18 @@ export const EarthCanvas: React.FC = () => {
         vec2 c = gl_PointCoord - 0.5;
         if (dot(c, c) > 0.25) discard;
 
-        // WorldPort cyan tint over rainbow color map
-        vec3 raw   = texture2D(colorTexture, vUv).rgb;
-        vec3 cyan  = vec3(0.15, 0.72, 1.0);
-        vec3 color = mix(raw, cyan, 0.5);
+        // Realistic earth color from map
+        vec3 color = texture2D(colorTexture, vUv).rgb;
 
-        gl_FragColor = vec4(color, alpha * 0.9);
+        gl_FragColor = vec4(color, alpha);
       }
     `;
 
     const dotMat = new THREE.ShaderMaterial({
       uniforms: {
-        size:         { value: isMobile ? 2.8 : 4.5 },
+        size: { value: isMobile ? 2.8 : 4.5 },
         colorTexture: { value: colorMap },
-        elevTexture:  { value: elevMap },
+        elevTexture: { value: elevMap },
         alphaTexture: { value: alphaMap },
       },
       vertexShader,
@@ -153,12 +147,12 @@ export const EarthCanvas: React.FC = () => {
     globeGroup.add(dotPoints);
 
     // 3. Atmosphere fresnel shells
-    const makeAtm = (r: number, col: [number,number,number], alpha: number, pw: number, int_ = 1.0) => {
+    const makeAtm = (r: number, col: [number, number, number], alpha: number, pw: number, int_ = 1.0) => {
       const mat = new THREE.ShaderMaterial({
         uniforms: {
-          col:       { value: new THREE.Vector3(...col) },
-          alpha:     { value: alpha },
-          pw:        { value: pw },
+          col: { value: new THREE.Vector3(...col) },
+          alpha: { value: alpha },
+          pw: { value: pw },
           intensity: { value: int_ },
         },
         vertexShader: `
@@ -183,54 +177,139 @@ export const EarthCanvas: React.FC = () => {
       });
       globeGroup.add(new THREE.Mesh(new THREE.SphereGeometry(r, 64, 64), mat));
     };
-    makeAtm(RADIUS + 10,  [0.3, 0.85, 1.0], 1.0,  3.0, 1.8);
-    makeAtm(RADIUS + 30,  [0.15, 0.6, 1.0],  0.6,  4.5, 1.3);
-    makeAtm(RADIUS + 70,  [0.08, 0.4, 0.9],  0.35, 6.5, 1.0);
-    makeAtm(RADIUS + 140, [0.04, 0.2, 0.7],  0.2,  9.0, 0.8);
+    // Atmosphere removed per user request for cleaner look
 
-    // Hemisphere light — front hemisphere brighter (mimics reference hemiLight)
+    // Hemisphere light
     scene.add(new THREE.HemisphereLight(0x4499ff, 0x081020, 2.0));
 
-    // ─── Internal Starfield ──────────────────────────────────────────────────
-    const starCount = 6000;
-    const sPosArr = new Float32Array(starCount * 3);
-    const sSzArr  = new Float32Array(starCount);
-    for (let i = 0; i < starCount; i++) {
-      const th = Math.random() * Math.PI * 2;
-      const ph = Math.acos(2 * Math.random() - 1);
-      const r  = 4000 + Math.random() * 3000;
-      sPosArr[i*3]   = r * Math.sin(ph) * Math.cos(th);
-      sPosArr[i*3+1] = r * Math.sin(ph) * Math.sin(th);
-      sPosArr[i*3+2] = r * Math.cos(ph);
-      sSzArr[i] = Math.random() < 0.05 ? Math.random() * 3 + 2 : Math.random() * 1.5 + 0.3;
+    // ─── Dot Earth (Particle Layer) ──────────────────────────────────────────
+    const dotGeom = new THREE.IcosahedronGeometry(RADIUS + 2, isMobile ? 40 : 80);
+    const dotEarthMat = new THREE.PointsMaterial({
+      color: 0x111622, // Lighter shade of black (Deep Charcoal/Midnight)
+      size: 1.5,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+      sizeAttenuation: true
+    });
+    const dotEarth = new THREE.Points(dotGeom, dotEarthMat);
+    globeGroup.add(dotEarth);
+
+    // ─── Dynamic Atmosphere Dust (Very Slow Drift) ───────────────────────────
+    const dustCount = 100; // Even less
+    const dustGeom = new THREE.BufferGeometry();
+    const dustPos = new Float32Array(dustCount * 3);
+    const dustVels = new Float32Array(dustCount);
+    for (let i = 0; i < dustCount; i++) {
+      dustPos[i * 3] = (Math.random() - 0.5) * 6000;
+      dustPos[i * 3 + 1] = (Math.random() - 0.5) * 4000;
+      dustPos[i * 3 + 2] = (Math.random() - 0.5) * 2000;
+      dustVels[i] = 0.05 + Math.random() * 0.15; // Slow drift
     }
-    const sGeo = new THREE.BufferGeometry();
-    sGeo.setAttribute("position", new THREE.BufferAttribute(sPosArr, 3));
-    sGeo.setAttribute("size",     new THREE.BufferAttribute(sSzArr, 1));
-    const starMat = new THREE.ShaderMaterial({
-      uniforms: { time: { value: 0 } },
+    dustGeom.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+    const dustMat = new THREE.PointsMaterial({
+      color: 0xcccccc,
+      size: 1.8,
+      transparent: true,
+      opacity: 0.3,
+      blending: THREE.AdditiveBlending,
+    });
+    const dustSystem = new THREE.Points(dustGeom, dustMat);
+    scene.add(dustSystem);
+
+    // ─── 3D Shining Stars (Optimized Volume) ─────────────────────────────────
+    /**
+     * STAR CONFIGURATION:
+     * - STAR_COUNT: 10000 to 20000 for a dense galaxy.
+     * - DEPTH_MIN / DEPTH_MAX: How far back they are. 
+     *    - Deeper (-30000) = slower movement, smaller stars.
+     *    - Closer (-5000) = faster parallax, brighter/larger.
+     * - VOL_W / VOL_H: The "box" size stars spawn in. 
+     *    - Tighten this (e.g. 15000) to make them denser in the center.
+     */
+    const STAR_COUNT = 10000;
+    const DEPTH_MIN = 8000;
+    const DEPTH_MAX = 25000;
+    const VOL_W = 25000; // Much tighter
+    const VOL_H = 15000;  // Much tighter
+
+    const MIN_SIZE = 20.0;
+    const MAX_SIZE = 85.0;
+    const TWINKLE_SPEED = 1.2;
+    const TWINKLE_INTENSITY = 0.5;
+
+    const starGeom = new THREE.BufferGeometry();
+    const starPos = new Float32Array(STAR_COUNT * 3);
+    const starCol = new Float32Array(STAR_COUNT * 3);
+    const starSizes = new Float32Array(STAR_COUNT);
+    const starPhases = new Float32Array(STAR_COUNT);
+
+    const palette = [
+      new THREE.Color(0xffffff),
+      new THREE.Color(0xccddee),
+      new THREE.Color(0xffeebb),
+      new THREE.Color(0xddeeff),
+      new THREE.Color(0xf0e0ff)
+    ];
+
+    for (let i = 0; i < STAR_COUNT; i++) {
+      // Spawning in a tighter volume centered on view
+      starPos[i * 3] = (Math.random() - 0.5) * VOL_W;
+      starPos[i * 3 + 1] = (Math.random() - 0.5) * VOL_H;
+      starPos[i * 3 + 2] = -DEPTH_MIN - Math.random() * (DEPTH_MAX - DEPTH_MIN);
+
+      const c = palette[Math.floor(Math.random() * palette.length)];
+      starCol[i * 3] = c.r; starCol[i * 3 + 1] = c.g; starCol[i * 3 + 2] = c.b;
+      starSizes[i] = MIN_SIZE + Math.random() * (MAX_SIZE - MIN_SIZE);
+      starPhases[i] = Math.random() * Math.PI * 2;
+    }
+    starGeom.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+    starGeom.setAttribute("color", new THREE.BufferAttribute(starCol, 3));
+    starGeom.setAttribute("size", new THREE.BufferAttribute(starSizes, 1));
+    starGeom.setAttribute("phase", new THREE.BufferAttribute(starPhases, 1));
+
+    const starShaderMat = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 },
+        uTwinkleSpeed: { value: TWINKLE_SPEED },
+        uTwinkleIntensity: { value: TWINKLE_INTENSITY }
+      },
       vertexShader: `
-        attribute float size; uniform float time; varying float vT;
-        float hash(float n) { return fract(sin(n) * 43758.5453); }
+        attribute float size;
+        attribute float phase;
+        varying vec3 vColor;
+        uniform float time;
+        uniform float uTwinkleSpeed;
+        uniform float uTwinkleIntensity;
         void main() {
-          float ph = hash(position.x + position.z);
-          vT = 0.4 + 0.6 * sin(time * (0.6 + ph * 1.8) + ph * 6.28);
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * vT * (700.0 / -mv.z);
-          gl_Position = projectionMatrix * mv;
+          vColor = color;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          float t = time * uTwinkleSpeed + phase;
+          float twinkle = (1.0 - uTwinkleIntensity) + uTwinkleIntensity * sin(t);
+          gl_PointSize = size * twinkle * (1000.0 / -mvPosition.z);
+          gl_Position = projectionMatrix * mvPosition;
         }
       `,
       fragmentShader: `
-        varying float vT;
+        varying vec3 vColor;
         void main() {
-          vec2 uv = gl_PointCoord - 0.5;
-          if (length(uv) > 0.5) discard;
-          gl_FragColor = vec4(0.88, 0.93, 1.0, (1.0 - length(uv)*2.0) * vT * 0.85);
+          // Soft radial glow for "shining" look
+          float dist = distance(gl_PointCoord, vec2(0.5));
+          if (dist > 0.5) discard;
+          
+          // Falloff for glow: 1.0 at center, 0.0 at edge
+          float glow = pow(1.0 - (dist * 2.0), 2.0);
+          gl_FragColor = vec4(vColor, glow);
         }
       `,
-      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexColors: true,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
     });
-    scene.add(new THREE.Points(sGeo, starMat));
+    const starSystem = new THREE.Points(starGeom, starShaderMat);
+    scene.add(starSystem);
+
 
     // ─── Space Mist (ambient nebula around globe) ─────────────────────────────
     const smokeGroup = new THREE.Group();
@@ -238,8 +317,8 @@ export const EarthCanvas: React.FC = () => {
     for (let i = 0; i < 10; i++) {
       const mat = new THREE.ShaderMaterial({
         uniforms: {
-          time:    { value: 0 },
-          color:   { value: new THREE.Color(i % 3 === 0 ? 0x00ffaa : i % 3 === 1 ? 0x00c8ff : 0x1a80ff) },
+          time: { value: 0 },
+          color: { value: new THREE.Color(i % 3 === 0 ? 0x00ffaa : i % 3 === 1 ? 0x00c8ff : 0x1a80ff) },
           opacity: { value: 0 },
         },
         vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
@@ -256,37 +335,62 @@ export const EarthCanvas: React.FC = () => {
         `,
         transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
       });
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2800, 1100), mat);
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(3500, 1500), mat);
       const angle = Math.random() * Math.PI * 2;
-      const r2 = RADIUS * 1.3 + Math.random() * 1400;
-      const base = new THREE.Vector3(Math.cos(angle)*r2, (Math.random()-0.5)*1800, -1500+(Math.random()-0.5)*1500);
+      const r2 = RADIUS * 5.0 + Math.random() * 2000; // Pushed MUCH further back
+      const base = new THREE.Vector3(Math.cos(angle) * r2, (Math.random() - 0.5) * 4000, -3000 - Math.random() * 2000);
       mesh.position.copy(base);
       mesh.rotation.z = Math.random() * Math.PI;
       smokeGroup.add(mesh);
-      smokeStrands.push({ mesh, phase: Math.random()*20, dir: new THREE.Vector3(Math.random()-.5, Math.random()-.5, 0).normalize(), base });
+      smokeStrands.push({ mesh, phase: Math.random() * 20, dir: new THREE.Vector3(Math.random() - .5, Math.random() - .5, 0).normalize(), base });
     }
     scene.add(smokeGroup);
 
-    // ─── GSAP Scroll: camera Y offset + Z zoom ──────────────────────────────
-    // Globe stays at origin — we move the camera around it
-    // controls.target always stays at (0,0,0) so drag stays correct
-    const camState = { y: CAM_Y, z: CAM_Z };
+    // ─── GSAP Scroll Journey ─────────────────────────────────────────────────
+    // We animate screen-space offsets (in pixels) and distance
+    const scrollState = {
+      offX: 0,
+      offY: -H * 0.75, // Start: 80% hidden at bottom
+      dist: 950,       // Start: Zoomed in for ~70% width
+    };
 
-    gsap.to(camState, {
-      y: CAM_Y * 0.3,   // camera drops closer to equator as user scrolls
-      z: CAM_Z * 0.75,  // slight zoom in
+    const tl = gsap.timeline({
       scrollTrigger: {
-        trigger: "body", start: "top top", end: "bottom bottom", scrub: 1.5,
-      },
-      onUpdate: () => {
-        // Preserve OrbitControls spherical offset by updating position delta
-        // We shift camera.position.y by the delta, keeping orbital rotation intact
-        const dy = camState.y - camera.position.y;
-        const dz = camState.z - camera.position.z;
-        camera.position.y += dy * 0.1;
-        camera.position.z += dz * 0.1;
+        trigger: "body",
+        start: "top top",
+        end: "bottom bottom",
+        scrub: 1.5,
       },
     });
+
+    /**
+     * GSAP TRANSITION OPTIONS:
+     * - "none": Linear mapping. Constant speed 1:1 with scroll. (Best for "consistent" feel)
+     * - "power1.inOut": Subtle acceleration at start/end.
+     * - "power2.inOut": Moderate acceleration (Standard smooth feel).
+     * - "power4.inOut": Aggressive acceleration. Fast in the middle, slow at ends.
+     * - "expo.inOut": Extreme acceleration. Very cinematic.
+     * - "circ.inOut": Geometric/Circular curve.
+     */
+    const TRANSITION_EASE = "none";
+
+    // 1. Start -> Middle (50%)
+    tl.to(scrollState, {
+      offX: 0,
+      offY: 0,
+      dist: 1600,
+      duration: 1,
+      ease: TRANSITION_EASE,
+    })
+      // 2. Middle -> End (100%)
+      // Target: Right Corner (centered at ~75% width, 60% height)
+      .to(scrollState, {
+        offX: -W * 0.25,
+        offY: -H * 0.1,
+        dist: 1400,
+        duration: 1,
+        ease: TRANSITION_EASE,
+      });
 
     // ─── Animation Loop ──────────────────────────────────────────────────────
     let rafId: number;
@@ -298,14 +402,39 @@ export const EarthCanvas: React.FC = () => {
       if (fpsLimit > 0 && t - prevTime < fpsLimit) return;
       prevTime = t;
 
-      starMat.uniforms.time.value = t * 0.001;
+      // 1. Update rotation
+      controls.update();
 
-      // Space mist drift
+      // 2. Apply Scroll Journey (Distance + Viewport Offset)
+      const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+      camera.position.copy(controls.target).add(dir.multiplyScalar(scrollState.dist));
+
+      // Shift viewport to move globe out of center
+      camera.setViewOffset(W, H, scrollState.offX, scrollState.offY, W, H);
+
+      // 3. Dynamic Dust Animation (Linear Drift)
+      const positions = dustGeom.attributes.position.array as Float32Array;
+      for (let i = 0; i < dustCount; i++) {
+        positions[i * 3] += dustVels[i]; // move right
+        if (positions[i * 3] > 3000) {
+          positions[i * 3] = -3000; // wrap to left
+          positions[i * 3 + 1] = (Math.random() - 0.5) * 4000; // new height
+        }
+      }
+      dustGeom.attributes.position.needsUpdate = true;
+
+      // 4. Star System Subtle Drift
+      starSystem.rotation.y += 0.00005;
+      starSystem.rotation.z += 0.00003;
+
+      // 5. Keep nebula/smoke oriented to camera
+      starShaderMat.uniforms.time.value = t * 0.001;
+      smokeStrands.forEach((ss) => ss.mesh.quaternion.copy(camera.quaternion));
       const solar = Math.max(0, Math.sin(t * 0.0003) * 0.8 + 0.2);
       smokeStrands.forEach((ss) => {
         const pulse = Math.sin(t * 0.0005 + ss.phase) * 0.3 + 0.7;
         const m = ss.mesh.material as THREE.ShaderMaterial;
-        m.uniforms.time.value    = t * 0.001;
+        m.uniforms.time.value = t * 0.001;
         m.uniforms.opacity.value = solar * pulse * 0.35;
         const drift = t * 0.00004;
         ss.mesh.position.x = ss.base.x + ss.dir.x * Math.sin(drift + ss.phase) * 250;
@@ -338,11 +467,21 @@ export const EarthCanvas: React.FC = () => {
   }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 w-full h-full"
-      style={{ zIndex: 2, pointerEvents: "auto" }}
-    />
+    <div ref={containerRef} className="fixed inset-0 w-full h-full" style={{ zIndex: 2, pointerEvents: "auto" }}>
+      {/* 
+        ─── VIGNETTE SETTINGS ──────────────────────────────────────────────────
+        - Change 'transparent 50%' to a lower % (e.g. 30%) for a tighter vignette.
+        - Change 'rgba(1, 6, 17, 0.9)' to a lower alpha (e.g. 0.5) for a lighter effect.
+        - The color '1, 6, 17' matches the deep space background.
+      */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `radial-gradient(circle, transparent 10%, rgba(1, 6, 17, 0.9) 100%)`,
+          zIndex: 10
+        }}
+      />
+    </div>
   );
 };
 
