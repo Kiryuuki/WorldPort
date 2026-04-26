@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import { LenisProvider } from "@/components/LenisProvider";
 import { StarCanvas } from "@/components/canvas/StarCanvas";
-import { CursorCanvas } from "@/components/canvas/CursorCanvas";
 import { EarthCanvas } from "@/components/canvas/EarthCanvas";
+import { AuroraCanvas } from "@/components/canvas/AuroraCanvas";
+import { DustCanvas } from "@/components/canvas/DustCanvas";
+import { VignetteCanvas } from "@/components/canvas/VignetteCanvas";
+import { CursorCanvas } from "@/components/canvas/CursorCanvas";
 import { GlassNav } from "@/components/nav/GlassNav";
-import { PageTransition } from "@/components/PageTransition";
-import { FloatingPills } from "@/components/ui/FloatingPills";
+import { LenisProvider } from "@/components/LenisProvider";
 
 const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
   subsets: ["latin"],
+  variable: "--font-space-grotesk",
 });
 
 export const metadata: Metadata = {
@@ -26,15 +27,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${spaceGrotesk.variable} antialiased`}>
-      <body className="bg-background text-foreground font-sans">
+      <body className="bg-[#010611] text-foreground font-sans selection:bg-accent/30 overflow-x-hidden">
         <LenisProvider>
+          {/* Background Layers */}
           <StarCanvas />
+          
+          {/* Additive Atmosphere Layers */}
+          <div className="fixed inset-0 pointer-events-none mix-blend-plus-lighter">
+            <AuroraCanvas />
+            <DustCanvas />
+          </div>
+
           <EarthCanvas />
+
+          {/* UI & Overlays */}
+          <VignetteCanvas />
           <CursorCanvas />
           <GlassNav />
-          <FloatingPills />
-          <main className="relative" style={{ zIndex: 10 }}>
-            <PageTransition>{children}</PageTransition>
+
+          <main className="relative z-10 min-h-screen">
+            {children}
           </main>
         </LenisProvider>
       </body>

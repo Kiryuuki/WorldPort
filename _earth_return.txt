@@ -1,0 +1,3 @@
+  return (
+    <div ref={containerRef} className="fixed inset-0 w-full h-full" style={{ zIndex: 2, pointerEvents: "auto" }} />
+  );

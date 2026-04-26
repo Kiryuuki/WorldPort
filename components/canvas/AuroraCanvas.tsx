@@ -2,11 +2,22 @@
 
 import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { canvasSettings } from "@/lib/canvas-settings";
 
-// Aurora Borealis — Three.js sprite particle curtains rising from horizon
-// Rendered in its own scene on top of EarthCanvas via canvas2D compositing
-// Uses screen blending like real aurora light emission
-// — Dash
+/**
+ * AuroraCanvas — Phase 10: Event-Driven Spacemist
+ * — Clouds appear as random events, drifting through space like smoke streams.
+ * — Dash
+ */
+
+interface SmokeEvent {
+  mesh: THREE.Mesh;
+  material: THREE.ShaderMaterial;
+  life: number; // 0 to 1
+  speed: number;
+  dir: THREE.Vector3;
+  basePos: THREE.Vector3;
+}
 
 export const AuroraCanvas: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -14,167 +25,148 @@ export const AuroraCanvas: React.FC = () => {
   useEffect(() => {
     if (!containerRef.current) return;
     const container = containerRef.current;
-    const W = container.clientWidth;
-    const H = container.clientHeight;
+    let W = container.clientWidth;
+    let H = container.clientHeight;
 
-    // Separate Three.js scene — renders on top of Earth via z-index
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(35, W / H, 0.1, 5000);
-    camera.position.set(0, 0, 1800);
+    const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 10000);
+    camera.position.set(0, 0, 1600);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    // Screen blending = additive light, aurora never darkens bg
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
-    // --- Sprite texture: soft radial blob ---
-    const makeSpriteTex = (color: string): THREE.Texture => {
-      const size = 128;
-      const cvs = document.createElement("canvas");
-      cvs.width = size; cvs.height = size;
-      const ctx = cvs.getContext("2d")!;
-      const grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
-      grad.addColorStop(0,   color.replace(")", ", 1)").replace("rgb", "rgba"));
-      grad.addColorStop(0.4, color.replace(")", ", 0.4)").replace("rgb", "rgba"));
-      grad.addColorStop(1,   color.replace(")", ", 0)").replace("rgb", "rgba"));
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, size, size);
-      const tex = new THREE.CanvasTexture(cvs);
-      return tex;
+    const smokeEvents: SmokeEvent[] = [];
+    const auroraSettings = canvasSettings.aurora;
+    const MAX_SMOKE_CLOUDS = auroraSettings.maxEvents;
+
+    const smokeGeometry = new THREE.PlaneGeometry(3500, 1800);
+
+    const createSmokeCloud = () => {
+      if (smokeEvents.length >= MAX_SMOKE_CLOUDS) return;
+
+      const colors = auroraSettings.colors;
+      const selectedColor = colors[Math.floor(Math.random() * colors.length)];
+
+      const mat = new THREE.ShaderMaterial({
+        uniforms: {
+          time: { value: 0 },
+          color: { value: new THREE.Color(selectedColor) },
+          opacity: { value: 0 },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float time; uniform vec3 color; uniform float opacity; varying vec2 vUv;
+          float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+          float noise(vec2 p){
+            vec2 i=floor(p); vec2 f=fract(p);
+            f=f*f*(3.0-2.0*f);
+            return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+          }
+          float fbm(vec2 p){
+            float v=0.,a=0.5;
+            for(int i=0;i<4;i++){v+=a*noise(p);p*=2.;a*=.5;}
+            return v;
+          }
+          void main(){
+            float t=time*0.15;
+            float n1=fbm(vec2(vUv.x*1.2 - t, vUv.y*2.5 + t*0.3));
+            float n2=fbm(vec2(vUv.y*1.8 - t*0.4, vUv.x*2.2 + t*0.8));
+            float s=smoothstep(0.1, 0.9, n1*n2*2.2);
+            // Vignette the plane so edges don't hard cut
+            float mask = smoothstep(0.0, 0.4, vUv.x) * smoothstep(1.0, 0.6, vUv.x) * 
+                         smoothstep(0.0, 0.4, vUv.y) * smoothstep(1.0, 0.6, vUv.y);
+            gl_FragColor = vec4(color, s * mask * opacity);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
+
+      const mesh = new THREE.Mesh(smokeGeometry, mat);
+      
+      // Random trajectory: Start from one side, move to the other
+      const side = Math.random() > 0.5 ? -1 : 1; // -1 = Left, 1 = Right
+      const startX = side * (W * 1.5);
+      const startY = (Math.random() - 0.5) * H * 1.5;
+      const startZ = -1500 - Math.random() * 2000;
+      
+      const basePos = new THREE.Vector3(startX, startY, startZ);
+      mesh.position.copy(basePos);
+      mesh.rotation.z = Math.random() * Math.PI * 2;
+      mesh.scale.setScalar(0.8 + Math.random() * 0.4);
+
+      scene.add(mesh);
+
+      smokeEvents.push({
+        mesh,
+        material: mat,
+        life: 0,
+        speed: (0.00015 + Math.random() * 0.00035) * auroraSettings.speedMultiplier, // Slow drift
+        dir: new THREE.Vector3(-side, (Math.random() - 0.5) * 0.5, 0).normalize(),
+        basePos
+      });
     };
 
-    // Aurora colors matching Mango Media reference
-    const texGreen  = makeSpriteTex("rgb(20, 220, 80)");
-    const texCyan   = makeSpriteTex("rgb(0, 200, 160)");
-    const texWhite  = makeSpriteTex("rgb(180, 255, 220)");
-
-    // Aurora horizon Y — matches Earth position in EarthCanvas (y: -(RADIUS*1.55) = ~-496)
-    // In camera space at z=0, y=-496 is below center — we place aurora just above that
-    const HORIZON_Y = -300;
-    const LEFT_X    = -900; // left side, matching Mango ref
-
-    // --- Build aurora curtain as vertical column of sprites ---
-    interface CurtainConfig {
-      x: number;
-      width: number;
-      heightSegments: number;
-      maxHeight: number;
-      color: THREE.Texture;
-      baseOpacity: number;
-      waveFreq: number;
-      waveAmp: number;
-      phaseOffset: number;
-      driftSpeed: number;
-    }
-
-    const curtains: CurtainConfig[] = [
-      // Wide base green wash — leftmost anchor
-      { x: LEFT_X + 0,   width: 280, heightSegments: 18, maxHeight: 820, color: texGreen,  baseOpacity: 0.12, waveFreq: 0.8, waveAmp: 60, phaseOffset: 0,   driftSpeed: 0.22 },
-      // Bright narrow green spike
-      { x: LEFT_X + 100, width: 120, heightSegments: 22, maxHeight: 950, color: texGreen,  baseOpacity: 0.22, waveFreq: 1.4, waveAmp: 35, phaseOffset: 0.6, driftSpeed: 0.35 },
-      // Cyan inner shimmer
-      { x: LEFT_X + 160, width: 160, heightSegments: 20, maxHeight: 880, color: texCyan,   baseOpacity: 0.14, waveFreq: 1.8, waveAmp: 28, phaseOffset: 1.2, driftSpeed: 0.28 },
-      // White hot core filament
-      { x: LEFT_X + 120, width: 60,  heightSegments: 16, maxHeight: 760, color: texWhite,  baseOpacity: 0.09, waveFreq: 2.4, waveAmp: 18, phaseOffset: 0.3, driftSpeed: 0.50 },
-      // Secondary green band (right of main)
-      { x: LEFT_X + 240, width: 140, heightSegments: 18, maxHeight: 700, color: texGreen,  baseOpacity: 0.10, waveFreq: 1.1, waveAmp: 45, phaseOffset: 1.8, driftSpeed: 0.20 },
-      // Wide soft base wash
-      { x: LEFT_X - 60,  width: 320, heightSegments: 12, maxHeight: 500, color: texGreen,  baseOpacity: 0.07, waveFreq: 0.5, waveAmp: 80, phaseOffset: 2.4, driftSpeed: 0.15 },
-    ];
-
-    // Store sprite groups for animation
-    const curtainGroups: Array<{
-      sprites: THREE.Sprite[];
-      config: CurtainConfig;
-      basePositions: THREE.Vector3[];
-    }> = [];
-
-    curtains.forEach((cfg) => {
-      const sprites: THREE.Sprite[] = [];
-      const basePositions: THREE.Vector3[] = [];
-
-      for (let i = 0; i < cfg.heightSegments; i++) {
-        const t = i / (cfg.heightSegments - 1); // 0 = base, 1 = top
-
-        const mat = new THREE.SpriteMaterial({
-          map: cfg.color,
-          transparent: true,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          // Opacity fades: dim at base, bright at mid, fade at top
-          opacity: cfg.baseOpacity * (
-            t < 0.15 ? t / 0.15 :          // fade in from base
-            t > 0.75 ? (1 - t) / 0.25 :    // fade out at top
-            1.0                             // full in middle band
-          ),
-        });
-
-        const sprite = new THREE.Sprite(mat);
-        // Width scales with curtain width, height per segment
-        const segH = cfg.maxHeight / cfg.heightSegments;
-        sprite.scale.set(cfg.width, segH * 1.4, 1); // 1.4 overlap for seamless
-
-        const basePos = new THREE.Vector3(
-          cfg.x,
-          HORIZON_Y + t * cfg.maxHeight,
-          0
-        );
-        sprite.position.copy(basePos);
-        basePositions.push(basePos.clone());
-        sprites.push(sprite);
-        scene.add(sprite);
+    // Scheduler: Trigger a new smoke event periodically
+    let nextEventTime = 0;
+    const updateScheduler = (t: number) => {
+      if (t > nextEventTime) {
+        createSmokeCloud();
+        // Next event in intervalMin to intervalMax
+        nextEventTime = t + auroraSettings.intervalMin + Math.random() * (auroraSettings.intervalMax - auroraSettings.intervalMin);
       }
+    };
 
-      curtainGroups.push({ sprites, config: cfg, basePositions });
-    });
-
-    // --- Animation ---
     let rafId: number;
-    let t = 0;
-
-    const animate = () => {
+    const animate = (t: number) => {
       rafId = requestAnimationFrame(animate);
-      t += 0.008;
+      updateScheduler(t);
 
-      curtainGroups.forEach(({ sprites, config, basePositions }) => {
-        // Global breathe pulse per curtain
-        const breathe = 0.7 + 0.3 * Math.sin(t * config.driftSpeed + config.phaseOffset);
+      for (let i = smokeEvents.length - 1; i >= 0; i--) {
+        const ev = smokeEvents[i];
+        ev.life += ev.speed;
 
-        sprites.forEach((sprite, i) => {
-          const progress = i / (sprites.length - 1);
-          // Lateral wave increases with height (more turbulent near top)
-          const wave = Math.sin(
-            progress * config.waveFreq * Math.PI * 2 +
-            t * config.driftSpeed +
-            config.phaseOffset
-          ) * config.waveAmp * Math.pow(progress, 0.6);
+        if (ev.life >= 1.0) {
+          scene.remove(ev.mesh);
+          ev.material.dispose();
+          smokeEvents.splice(i, 1);
+          continue;
+        }
 
-          sprite.position.x = basePositions[i].x + wave;
-          sprite.position.y = basePositions[i].y;
+        // Opacity envelope: fade in -> sustain -> fade out
+        const opacity = Math.sin(ev.life * Math.PI) * auroraSettings.opacityMultiplier;
+        ev.material.uniforms.opacity.value = opacity;
+        ev.material.uniforms.time.value = t * 0.001;
 
-          // Opacity pulse — also modulated by height (top shimmers more)
-          const heightMod = progress > 0.5 ? 1 + 0.4 * Math.sin(t * config.driftSpeed * 3 + i) : 1;
-          (sprite.material as THREE.SpriteMaterial).opacity =
-            config.baseOpacity *
-            breathe *
-            heightMod *
-            (progress < 0.15 ? progress / 0.15 : progress > 0.75 ? (1 - progress) / 0.25 : 1.0);
-        });
-      });
+        // Move along direction
+        const travelDist = 5000; // Total distance traveled over life
+        ev.mesh.position.x = ev.basePos.x + ev.dir.x * (ev.life * travelDist);
+        ev.mesh.position.y = ev.basePos.y + ev.dir.y * (ev.life * travelDist);
+        
+        // Billboard toward camera
+        ev.mesh.quaternion.copy(camera.quaternion);
+      }
 
       renderer.render(scene, camera);
     };
-
     rafId = requestAnimationFrame(animate);
 
-    // --- Resize ---
     const onResize = () => {
-      const w = container.clientWidth, h = container.clientHeight;
-      camera.aspect = w / h;
+      W = container.clientWidth;
+      H = container.clientHeight;
+      camera.aspect = W / H;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
+      renderer.setSize(W, H);
     };
     window.addEventListener("resize", onResize);
 
@@ -183,6 +175,9 @@ export const AuroraCanvas: React.FC = () => {
       window.removeEventListener("resize", onResize);
       if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
       renderer.dispose();
+      smokeEvents.forEach(ev => {
+        ev.material.dispose();
+      });
     };
   }, []);
 
@@ -190,10 +185,9 @@ export const AuroraCanvas: React.FC = () => {
     <div
       ref={containerRef}
       className="fixed inset-0 w-full h-full pointer-events-none"
-      style={{ zIndex: 3, mixBlendMode: "screen" }}
+      style={{ zIndex: 1 }}
     />
   );
 };
 
 export default AuroraCanvas;
-// — Dash
