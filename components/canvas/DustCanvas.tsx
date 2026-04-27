@@ -107,9 +107,10 @@ export const DustCanvas: React.FC = () => {
       }
     };
 
+    let frameId: number;
     let lastSpawn = 0;
     const animate = (t: number) => {
-      requestAnimationFrame(animate);
+      frameId = requestAnimationFrame(animate);
 
       // 3D Update
       const pos = dustGeom3D.attributes.position.array as Float32Array;
@@ -151,7 +152,7 @@ export const DustCanvas: React.FC = () => {
       });
       ctx.globalAlpha = 1;
     };
-    requestAnimationFrame(animate);
+    frameId = requestAnimationFrame(animate);
 
     const onResize = () => {
       const w = container.clientWidth, h = container.clientHeight;
@@ -164,7 +165,12 @@ export const DustCanvas: React.FC = () => {
 
     return () => {
       window.removeEventListener("resize", onResize);
-      controls.dispose(); renderer.dispose();
+      cancelAnimationFrame(frameId);
+      renderer.dispose();
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
+      scene.clear();
     };
   }, []);
 

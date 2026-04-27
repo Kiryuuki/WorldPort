@@ -1,0 +1,155 @@
+"use client";
+// components/dashboard/WorkflowPanel.tsx
+
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { WorkflowRow } from './WorkflowRow';
+import { WorkflowDrawer } from './WorkflowDrawer';
+import { Search, Activity } from 'lucide-react';
+
+async function fetchExecutions(search: string) {
+  const params = new URLSearchParams({ page: '1', page_size: '20' });
+  if (search) params.set('workflow_name', search);
+  const res = await fetch(`/api/executions?${params}`);
+  if (!res.ok) throw new Error('Failed to fetch executions');
+  return res.json();
+}
+
+export const WorkflowPanel: React.FC = () => {
+  const [search, setSearch]     = useState('');
+  const [selected, setSelected] = useState<any | null>(null);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey:        ['executions', search],
+    queryFn:         () => fetchExecutions(search),
+    refetchInterval: 30_000,
+    staleTime:       25_000,
+  });
+
+  const executions: any[] = data?.data || [];
+  const globalStats       = data?.global_stats;
+
+  return (
+    <>
+      <div
+        data-lenis-prevent
+        style={{
+          width:          '340px',
+          height:         '72vh',
+          display:        'flex',
+          flexDirection:  'column',
+          fontFamily:     "'JetBrains Mono', monospace",
+          background:     'rgba(255,255,255,0.02)',
+          backdropFilter: 'blur(24px) saturate(1.4)',
+          border:         '1px solid rgba(255,255,255,0.07)',
+          borderRadius:   '16px',
+          overflow:       'hidden',
+        }}
+      >
+        {/* ── Header ─────────────────────────────────────────── */}
+        <div
+          style={{
+            padding:      '20px 20px 16px',
+            borderBottom: '1px solid rgba(255,255,255,0.05)',
+            flexShrink:   0,
+          }}
+        >
+          {/* Label + live dot */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '10px', letterSpacing: '0.15em', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>
+              // 02 // AUTOMATION_OPS
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{
+                width: '7px', height: '7px', borderRadius: '50%',
+                backgroundColor: '#00ff88',
+                boxShadow: '0 0 6px #00ff88',
+                animation: 'pulse 2s infinite',
+              }} />
+              <span style={{ fontSize: '9px', letterSpacing: '0.15em', fontWeight: 700, color: '#00ff88', textTransform: 'uppercase' }}>LIVE</span>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          {globalStats && (
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                TOTAL <span style={{ color: 'rgba(255,255,255,0.7)' }}>{globalStats.total}</span>
+              </span>
+              <span style={{ fontSize: '10px', color: 'rgba(0,255,136,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                OK <span style={{ color: '#00ff88' }}>{globalStats.success}</span>
+              </span>
+              <span style={{ fontSize: '10px', color: 'rgba(255,51,85,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                ERR <span style={{ color: '#ff3355' }}>{globalStats.error}</span>
+              </span>
+            </div>
+          )}
+
+          {/* Search */}
+          <div style={{ position: 'relative' }}>
+            <Search size={11} style={{
+              position: 'absolute', left: '10px',
+              top: '50%', transform: 'translateY(-50%)',
+              color: 'rgba(255,255,255,0.25)',
+            }} />
+            <input
+              type="text"
+              placeholder="SEARCH_NODE..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{
+                width:        '100%',
+                boxSizing:    'border-box',
+                background:   'rgba(0,0,0,0.2)',
+                border:       '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '8px',
+                padding:      '8px 12px 8px 30px',
+                fontSize:     '11px',
+                color:        '#fff',
+                fontFamily:   'inherit',
+                letterSpacing:'0.05em',
+                outline:      'none',
+              }}
+              onFocus={e => (e.target.style.borderColor = 'rgba(255,255,255,0.25)')}
+              onBlur={e  => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
+            />
+          </div>
+        </div>
+
+        {/* ── List ───────────────────────────────────────────── */}
+        <div style={{ overflowY: 'auto', flex: 1, scrollbarWidth: 'none' }}>
+          {isLoading && Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} style={{ padding: '10px 16px', borderLeft: '2px solid rgba(255,255,255,0.08)', marginBottom: '2px', opacity: 1 - i * 0.1 }}>
+              <div style={{ height: '11px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px', width: '65%', marginBottom: '6px' }} />
+              <div style={{ height: '9px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', width: '40%' }} />
+            </div>
+          ))}
+
+          {isError && (
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#ff3355', fontSize: '11px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <Activity size={16} style={{ opacity: 0.5 }} />
+              SYNC_FAILURE: CHECK_API
+            </div>
+          )}
+
+          {!isLoading && !isError && executions.length === 0 && (
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: '11px', letterSpacing: '0.1em' }}>
+              NO EXECUTIONS FOUND
+            </div>
+          )}
+
+          {!isLoading && executions.map(exec => (
+            <WorkflowRow
+              key={exec.id}
+              execution={exec}
+              active={selected?.id === exec.id}
+              onClick={() => setSelected(exec)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <WorkflowDrawer execution={selected} onClose={() => setSelected(null)} />
+    </>
+  );
+};

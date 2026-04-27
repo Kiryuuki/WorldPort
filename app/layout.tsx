@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { StarCanvas } from "@/components/canvas/StarCanvas";
 import { EarthCanvas } from "@/components/canvas/EarthCanvas";
@@ -9,10 +9,16 @@ import { VignetteCanvas } from "@/components/canvas/VignetteCanvas";
 import { CursorCanvas } from "@/components/canvas/CursorCanvas";
 import { GlassNav } from "@/components/nav/GlassNav";
 import { LenisProvider } from "@/components/LenisProvider";
+import { Providers } from "@/components/Providers";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
 });
 
 export const metadata: Metadata = {
@@ -26,9 +32,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} antialiased`}>
+    <html lang="en" className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}>
       <body className="bg-[#010611] text-foreground font-sans selection:bg-accent/30 overflow-x-hidden">
         <LenisProvider>
+          <Providers>
           {/* Background Layers */}
           <StarCanvas />
           
@@ -48,6 +55,7 @@ export default function RootLayout({
           <main className="relative z-10 min-h-screen">
             {children}
           </main>
+          </Providers>
         </LenisProvider>
       </body>
     </html>

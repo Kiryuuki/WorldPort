@@ -41,6 +41,33 @@ export const canvasSettings = {
       maskImage: "radial-gradient(circle, black 70%, transparent 100%)",
       border: "none",
       boxShadow: "inset 0 0 50px rgba(0, 0, 0, 0.4)",
+    },
+    scrollJourney: {
+      // Phase 1 (0% - 33%): Globe moves from bottom to absolute center.
+      phase1: {
+        duration: 1, // GSAP relative duration within the scrub
+        offX: 0,
+        offY: 0,
+        dist: 1600,
+        ease: "power2.inOut"
+      },
+      // Phase 2 (33% - 66%): Globe stays in the center (Dashboard focus).
+      phase2: {
+        duration: 1,
+        offX: 0,
+        offY: 0,
+        dist: 1600,
+        ease: "none"
+      },
+      // Phase 3 (66% - 100%): Globe slides to right corner (Work/About focus).
+      phase3: {
+        duration: 1,
+        // Calculate W and H multipliers. Previously offX: -W * 0.25, offY: -H * 0.1
+        offXMult: -0.25,
+        offYMult: -0.1,
+        dist: 1400,
+        ease: "power2.inOut"
+      }
     }
   },
 

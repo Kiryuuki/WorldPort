@@ -1,27 +1,38 @@
 import React from "react";
-import { getPostData, getSortedPostsData } from "@/lib/posts";
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { getCaseStudy, getCaseStudies } from "@/lib/content";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
-  const posts = getSortedPostsData();
-  return posts.map((post) => ({
-    slug: post.slug,
-  }));
+  try {
+    const caseStudies = await getCaseStudies();
+    return caseStudies.map((post: any) => ({
+      slug: post.slug,
+    }));
+  } catch (error) {
+    console.error("Failed to fetch case studies for static params", error);
+    return [];
+  }
 }
 
 export default async function CaseStudyPage({ params }: Props) {
   const { slug } = await params;
-  const post = await getPostData(slug);
+  const post = await getCaseStudy(slug);
 
   if (!post) {
     notFound();
   }
+
+  const stack = typeof post.stack === 'string' ? post.stack.split(',').map(s => s.trim()) : [];
+  const readTime = "5 MIN READ"; // Mocked
 
   return (
     <article className="pt-40 pb-20 px-6">
@@ -35,7 +46,7 @@ export default async function CaseStudyPage({ params }: Props) {
 
         <header className="space-y-8 mb-20">
           <div className="flex flex-wrap gap-3">
-            {post.stack.map((s) => (
+            {stack.map((s: string) => (
               <span key={s} className="px-3 py-1 glass rounded-full text-[10px] font-bold uppercase tracking-widest text-white/60">
                 {s}
               </span>
@@ -57,7 +68,9 @@ export default async function CaseStudyPage({ params }: Props) {
           prose-hr:border-white/10
           space-y-12
         ">
-          <MDXRemote source={post.content} />
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {post.body}
+          </ReactMarkdown>
         </div>
 
         <footer className="mt-32 pt-12 border-t border-white/10 flex flex-col md:flex-row justify-between gap-8">
@@ -67,7 +80,7 @@ export default async function CaseStudyPage({ params }: Props) {
           </div>
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Reading Time</p>
-            <p className="text-sm font-bold text-white">{post.readTime}</p>
+            <p className="text-sm font-bold text-white">{readTime}</p>
           </div>
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Share Signal</p>

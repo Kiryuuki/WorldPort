@@ -574,359 +574,515 @@ The site is done when a stranger reads it and says "I want to work with this per
 
 ## Phase 9 — CMS + Data Layer (Directus + Supabase)
 
-**Goal**: Replace all hardcoded content with live CMS-driven data. Blog posts, case studies, and dashboard feeds pull from Directus and Supabase. No content is hardcoded in the codebase.
+**Status**: Infrastructure ready. Directus and Supabase are deployed and configured. Implementation only.
 
-### Architecture
+### What's Already Live
+- **Directus** at `cms.kiryuuki.space` — collections confirmed: `about`, `blog_posts`, `case_studies`, `content_ideas`, `github`, `social_posts`
+- **Supabase** — `workflow_executions` table live, n8n already writing to it after each run
+- **Glance** (uptime monitor) at `192.168.100.144:3001` — not Uptime Kuma. Has a status API. Used for FLEET_STATUS panel.
+- **`.env.local`** already contains keys (DIRECTUS_URL, DIRECTUS_TOKEN, Supabase keys, GLANCE_API_KEY)
 
-```
-Directus CMS (self-hosted, Dokploy)  →  Next.js API routes  →  Page components
-Supabase (n8n writes, site reads)    →  Next.js API routes  →  Dashboard section
-```
+### 9.1 — Environment Variables Required
 
-**Directus** handles: blog posts, case studies, about content, any copy that changes.
-**Supabase** handles: live workflow execution logs (n8n writes), uptime data (read from Uptime Kuma API).
-
-### 9.1 — Environment Setup
-
-**`.env.local`** (never commit):
+**`.env.local`** (already exists on machine, add these if missing):
 ```env
 # Directus
 DIRECTUS_URL=https://cms.kiryuuki.space
-DIRECTUS_TOKEN=your_static_token_here
+DIRECTUS_TOKEN=your_static_token
 
 # Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Glance (homelab uptime)
+GLANCE_URL=http://192.168.100.144:3001
+GLANCE_API_KEY=your_key
 ```
 
-**`.env.example`** (commit this, no values):
+**`.env.example`** — commit this:
 ```env
 DIRECTUS_URL=
 DIRECTUS_TOKEN=
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
+GLANCE_URL=
+GLANCE_API_KEY=
 ```
 
-**Docker/GHCR**: inject via GitHub Actions secrets → `--env-file` or Dokploy environment panel.
+### 9.2 — Install Dependencies
 
-### 9.2 — Directus Setup (self-hosted)
+```bash
+npm install @directus/sdk @supabase/supabase-js react-markdown remark-gfm
+```
 
-**Tasks:**
-- [ ] Deploy Directus on Dokploy (LXC or container) at `cms.kiryuuki.space`
-- [ ] Create collections in Directus:
-  - `posts` — blog entries (fields: `title`, `slug`, `date`, `body` (rich text / markdown), `excerpt`, `published`)
-  - `case_studies` — (fields: `title`, `slug`, `hook`, `stack[]`, `body`, `outcome`, `date`, `published`)
-  - `about` — single (fields: `bio`, `philosophy`, `current_focus`, `not_section`)
-- [ ] Create static API token in Directus (Settings → Access Tokens)
-- [ ] Set collection permissions: public `read` on published items only
-- [ ] Install Directus SDK: `npm install @directus/sdk`
+### 9.3 — Data Layer Files
 
 **`lib/directus.ts`**:
 ```ts
 import { createDirectus, rest, staticToken } from '@directus/sdk';
-
-// Server-side only client (uses secret token)
 export const directus = createDirectus(process.env.DIRECTUS_URL!)
   .with(staticToken(process.env.DIRECTUS_TOKEN!))
   .with(rest());
 ```
 
-**`lib/content.ts`** — typed fetchers:
+**`lib/supabase.ts`**:
+```ts
+import { createClient } from '@supabase/supabase-js';
+export const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+```
+
+**`lib/content.ts`** — typed fetchers for Directus:
 ```ts
 import { directus } from './directus';
-import { readItems, readItem } from '@directus/sdk';
+import { readItems } from '@directus/sdk';
 
-export type CaseStudy = {
-  id: string; slug: string; title: string; hook: string;
-  stack: string[]; body: string; outcome: string; date: string;
-};
-
-export async function getCaseStudies(): Promise<CaseStudy[]> {
+export async function getCaseStudies() {
   return directus.request(readItems('case_studies', {
-    filter: { published: { _eq: true } },
-    sort: ['-date'],
+    filter: { status: { _eq: 'published' } }, sort: ['-date_created'],
   }));
 }
-
-export async function getCaseStudy(slug: string): Promise<CaseStudy> {
-  const items = await directus.request(readItems('case_studies', {
-    filter: { slug: { _eq: slug }, published: { _eq: true } },
-    limit: 1,
-  }));
-  return items[0];
-}
-
 export async function getPosts() {
-  return directus.request(readItems('posts', {
-    filter: { published: { _eq: true } },
-    sort: ['-date'],
-    fields: ['title', 'slug', 'date', 'excerpt'],
+  return directus.request(readItems('blog_posts', {
+    filter: { status: { _eq: 'published' } }, sort: ['-date_created'],
+    fields: ['id', 'title', 'slug', 'date_created', 'excerpt'],
   }));
 }
 ```
 
-**Tasks:**
-- [ ] Create `lib/directus.ts` + `lib/content.ts`
-- [ ] Replace MDX-based `lib/posts.ts` with Directus fetchers
-- [ ] Update `/work` page: fetch case studies from Directus
-- [ ] Update `/work/[slug]` page: fetch single case study from Directus, render body as markdown (`react-markdown` or `remark`)
-- [ ] Update `/blog` page: fetch posts from Directus
-- [ ] Update `/about` page: fetch about content from Directus
-- [ ] Add ISR: `revalidate = 3600` on all Directus-fetched pages (content refreshes hourly)
-- [ ] Remove MDX pipeline from `next.config.ts` (no longer needed)
-
-### 9.3 — Supabase Setup
-
-**Tables needed:**
-
-```sql
--- n8n workflow execution log (n8n writes via HTTP node after each run)
-CREATE TABLE workflow_executions (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  workflow_id text NOT NULL,
-  name        text NOT NULL,
-  status      text NOT NULL,          -- 'success' | 'error' | 'running'
-  started_at  timestamptz NOT NULL,
-  duration_ms int,
-  trigger     text,                   -- 'manual' | 'schedule' | 'webhook'
-  node_count  int,
-  error_msg   text,
-  created_at  timestamptz DEFAULT now()
-);
-
--- Uptime Kuma service status (n8n polls Uptime Kuma API + writes here)
-CREATE TABLE service_status (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name        text NOT NULL,
-  protocol    text NOT NULL,          -- 'HTTP' | 'TCP'
-  status      text NOT NULL,          -- 'operational' | 'outage' | 'degraded'
-  checked_at  timestamptz DEFAULT now(),
-  what_it_does  text,                 -- human-readable description
-  what_it_replaces text               -- what manual process it replaces
-);
+**`lib/glance.ts`** — Glance API fetcher (server-side only):
+```ts
+// Glance has a /api/v1/monitors endpoint — returns service status list
+export async function getGlanceStatus() {
+  const res = await fetch(`${process.env.GLANCE_URL}/api/v1/monitors`, {
+    headers: { 'Authorization': `Bearer ${process.env.GLANCE_API_KEY}` },
+    next: { revalidate: 60 }, // ISR: refresh every 60s
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
 ```
 
-**n8n integration**: add an HTTP Request node at the end of every workflow that POSTs execution result to Supabase REST API. Also create a separate n8n workflow that polls Uptime Kuma every 5 minutes and upserts `service_status`.
+**`app/api/fleet/route.ts`** — proxy endpoint (exposes Glance to client without leaking key):
+```ts
+import { getGlanceStatus } from '@/lib/glance';
+import { NextResponse } from 'next/server';
+export async function GET() {
+  const data = await getGlanceStatus();
+  return NextResponse.json(data);
+}
+```
+
+### 9.4 — Supabase `workflow_executions` Schema
+
+Already live. Confirmed fields from production data:
+```
+id, execution_id, workflow_id, workflow_name, status,
+finished, started_at, finished_at, duration_ms, mode,
+node_count, error_message, execution_data (JSON blob),
+workflow_data (JSON blob), created_at
+```
+
+`execution_data` contains full n8n run graph: nodes, outputs, errors per node.
+`workflow_data` contains workflow definition: nodes array with names, types, positions.
 
 **Tasks:**
-- [ ] Create Supabase project, get URL + keys
-- [ ] Run SQL above to create tables
-- [ ] Set RLS: `workflow_executions` — anon can SELECT; `service_status` — anon can SELECT
-- [ ] Install Supabase client: `npm install @supabase/supabase-js`
-- [ ] Create `lib/supabase.ts`:
-  ```ts
-  import { createClient } from '@supabase/supabase-js';
-  export const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  ```
-- [ ] Create n8n HTTP node snippet to write workflow results to Supabase
-- [ ] Create n8n workflow: Uptime Kuma poller → upsert to `service_status`
-- [ ] Populate `what_it_does` + `what_it_replaces` per service in Supabase (one-time seed)
+- [x] Create `lib/directus.ts`, `lib/supabase.ts`, `lib/content.ts`, `lib/glance.ts`
+- [x] Create `app/api/fleet/route.ts`
+- [x] Create `.env.example`
+- [x] Install deps: `@directus/sdk @supabase/supabase-js react-markdown remark-gfm`
+- [x] Update `/work` — fetch from `case_studies`
+- [x] Update `/blog` — fetch from `blog_posts`
+- [x] Update `/about` — fetch from `about` singleton
+- [x] Remove MDX pipeline from `next.config.ts`
 
 ---
 
 ## Phase 10 — Mission Control Dashboard (50% Scroll Section)
 
-**Goal**: At 50% scroll depth, the site reveals a split-panel live dashboard. Left: n8n workflow execution feed. Right: homelab service uptime grid. Everything pulls from Supabase in real-time. Consistent with the WorldPort space/terminal aesthetic.
+**Status**: Reference implementation exists at `n8n-dashboard-anatlycis-ui-main`. Adapt patterns directly, do NOT reinvent.
 
-### What It Shows
+### Source of Truth
+```
+C:\Users\MY PC\Documents\ObsidianReal\vault32\Projects\active\n8n-dashboard-anatlycis-ui-main\
+  lib/
+    api.ts                — React Query hooks: useExecutions, useUptimeStatus
+    types.ts              — ExecutionLog, UptimeMonitor, PaginatedResponse types
+    serviceDescriptions.ts — SERVICE_DESCRIPTIONS map + getServiceDescription()
+    workflowDescriptions.ts — WORKFLOW_DESCRIPTIONS map + getWorkflowDescription()
+  components/status/
+    ExecutionTable.tsx    — sortable table, StarBorder row effect, pagination
+    UptimeKuma.tsx        — monitor list, status dots, click-to-drawer
+    ServiceDetailDrawer.tsx — framer-motion slide-in, WHAT_IT_DOES / WHAT_IT_REPLACES
+    ExecutionDetailPanel.tsx — workflow step visualizer, meta grid
+    ExecutionBadge.tsx    — status badge (success/error/running)
+    WorkflowVisualizer.tsx — node step graph from execution_data
+  app/api/proxy/[...path]/route.ts — catch-all Next.js proxy to FastAPI
+```
 
-This section communicates: *"Everything I build actually runs. Here's the proof."*
+### Architecture (CONFIRMED from reference)
 
-It's not a demo — it's live infrastructure telemetry, styled as a mission control terminal.
+```
+Supabase n8n_execution_logs table
+  ↓ (server-side, service role key)
+FastAPI backend (port 8000)
+  ↓ (Next.js proxy: /api/proxy/* → http://localhost:8000/api/v1/*)
+React Query hooks (useExecutions, useUptimeStatus)
+  ↓
+React components (ExecutionTable, UptimeKuma)
+```
+
+**Uptime source**: NOT Glance API. The reference hits **Uptime Kuma** at `http://192.168.100.144:3001` via:
+- `GET /api/status-page/glanstats` — monitor list
+- `GET /api/status-page/heartbeat/glanstats` — live up/down state
+Both are **public endpoints** (no auth needed). Status: `1 = UP`, `0 = DOWN`.
+
+**Supabase table name**: `n8n_execution_logs` (not `workflow_executions`)
+**Supabase anon key**: empty in `.env` — backend uses **service role key** directly.
+
+### What to Copy vs. Adapt
+
+| Reference | WorldPort adaptation |
+|---|---|
+| `lib/types.ts` | Copy verbatim (ExecutionLog, UptimeMonitor, etc.) |
+| `lib/serviceDescriptions.ts` | Copy + extend with beszel, browserless, whisper, chatwoot, twenty |
+| `lib/workflowDescriptions.ts` | Copy + add error-alert, book-summary, manga-monitor workflows |
+| `app/api/proxy/[...path]/route.ts` | Copy verbatim |
+| `ExecutionBadge.tsx` | Copy, restyle to WorldPort palette |
+| `UptimeKuma.tsx` | Copy, restyle panels to WorldPort glass |
+| `ServiceDetailDrawer.tsx` | Copy framer-motion pattern, restyle |
+| `ExecutionTable.tsx` | Copy logic, replace HeroUI Table with custom div rows |
+| `WorkflowVisualizer.tsx` | Copy verbatim — parses execution_data JSON |
+| FastAPI backend | **NOT needed for WorldPort** — Next.js API routes replace it |
+
+### Simplified Data Layer (No FastAPI needed)
+
+WorldPort is Next.js-only. Replace the FastAPI layer with Next.js API routes:
+
+**`app/api/executions/route.ts`** — replaces FastAPI `/n8n/executions`:
+```ts
+import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
+
+// Service role key — server-side only, never sent to browser
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const page      = parseInt(searchParams.get('page')      || '1');
+  const page_size = parseInt(searchParams.get('page_size') || '20');
+  const status    = searchParams.get('status');
+  const name      = searchParams.get('workflow_name');
+
+  // Columns: exclude execution_data (heavy) from list view
+  const cols = 'id,execution_id,workflow_id,workflow_name,status,finished,started_at,finished_at,duration_ms,mode,node_count,error_message,created_at,workflow_data';
+
+  let q = supabase.table('n8n_execution_logs').select(cols, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range((page-1)*page_size, page*page_size-1);
+
+  if (status && status !== 'all') q = q.eq('status', status);
+  if (name) q = q.ilike('workflow_name', `%${name}%`);
+
+  const { data, count, error } = await q.execute();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({
+    data,
+    total: count || 0,
+    page,
+    page_size,
+    pages: Math.ceil((count || 0) / page_size),
+  });
+}
+```
+
+**`app/api/executions/[id]/route.ts`** — single execution with full execution_data:
+```ts
+export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
+  const { data, error } = await supabase
+    .from('n8n_execution_logs')
+    .select('*')
+    .eq('id', params.id)
+    .single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
+  return NextResponse.json(data);
+}
+```
+
+**`app/api/uptime/route.ts`** — Uptime Kuma proxy (public API, no auth):
+```ts
+import { NextResponse } from 'next/server';
+
+const UK_BASE = 'http://192.168.100.144:3001';
+const SLUG    = 'glanstats';
+
+export async function GET() {
+  // Both endpoints are public — no token needed
+  const [statusRes, hbRes] = await Promise.all([
+    fetch(`${UK_BASE}/api/status-page/${SLUG}`,           { next: { revalidate: 30 } }),
+    fetch(`${UK_BASE}/api/status-page/heartbeat/${SLUG}`, { next: { revalidate: 30 } }),
+  ]);
+
+  const statusData = await statusRes.json();
+  const hbData     = await hbRes.json();
+
+  const hbList = hbData.heartbeatList || {};
+  const monitors = statusData.publicGroupList
+    ?.flatMap((g: any) => g.monitorList || [])
+    .map((m: any) => ({
+      id:     String(m.id),
+      name:   m.name,
+      active: m.active,
+      status: hbList[String(m.id)]?.at(-1)?.status ?? null, // 1=UP, 0=DOWN
+      type:   m.type,
+    })) || [];
+
+  return NextResponse.json({
+    monitors,
+    slug: SLUG,
+    last_updated: statusData.timestamp || '',
+  });
+}
+```
+
+### React Query Hooks (adapted from reference)
+
+**`lib/api.ts`** (WorldPort version — hits own Next.js routes, not FastAPI):
+```ts
+import { useQuery } from '@tanstack/react-query';
+
+export const useExecutions = (filters = {}) =>
+  useQuery({
+    queryKey: ['executions', filters],
+    queryFn: async () => {
+      const params = new URLSearchParams(filters as any);
+      const res = await fetch(`/api/executions?${params}`);
+      return res.json();
+    },
+    refetchInterval: 30_000,
+  });
+
+export const useExecution = (id: string) =>
+  useQuery({
+    queryKey: ['execution', id],
+    queryFn: async () => (await fetch(`/api/executions/${id}`)).json(),
+    enabled: !!id,
+  });
+
+export const useUptimeStatus = () =>
+  useQuery({
+    queryKey: ['uptime'],
+    queryFn: async () => (await fetch('/api/uptime')).json(),
+    refetchInterval: 30_000,
+  });
+```
+
+### Layout Behavior
+
+```
+[SCROLL 0%]   Globe centered, panels off-screen (left x:-420, right x:+420)
+[SCROLL 30%]  Left panel slides to x:0, right panel slides to x:0 via GSAP scrub
+              Globe remains centered behind gap between panels
+[SCROLL 70%]  Panels fade out (opacity:0, y:-30) as user scrolls past
+```
+
+Panels are `position: fixed`-like but scroll-anchored via GSAP ScrollTrigger pinning.
+Center zone stays clear — globe visible through the 50vw+ gap between 340px panels.
+
+### GSAP Scroll Trigger
+```tsx
+// In MissionControlSection.tsx
+useEffect(() => {
+  const tl = gsap.timeline({
+    scrollTrigger: { trigger: sectionRef.current, start: 'top 70%', end: 'top 20%', scrub: 1.2 }
+  });
+  tl.fromTo(leftRef.current,  { x: -420, opacity: 0 }, { x: 0, opacity: 1 }, 0);
+  tl.fromTo(rightRef.current, { x: 420,  opacity: 0 }, { x: 0, opacity: 1 }, 0);
+
+  gsap.to([leftRef.current, rightRef.current], {
+    scrollTrigger: { trigger: sectionRef.current, start: 'bottom 60%', end: 'bottom top', scrub: 1 },
+    opacity: 0, y: -30,
+  });
+}, []);
+```
+
+### Component Architecture
+
+```
+components/dashboard/
+  MissionControlSection.tsx  — scroll trigger wrapper, positions left/right panels
+  WorkflowPanel/
+    index.tsx                — left glass panel, wraps ExecutionTable logic
+    Row.tsx                  — adapted from ExecutionTable row (no HeroUI, custom div)
+    Drawer.tsx               — adapted from ExecutionDetailPanel + WorkflowVisualizer
+  FleetPanel/
+    index.tsx                — right glass panel, wraps UptimeKuma logic
+    Row.tsx                  — adapted from UptimeKuma monitor row
+    Drawer.tsx               — adapted from ServiceDetailDrawer (framer-motion)
+lib/
+  api.ts                     — React Query hooks (WorldPort version)
+  types.ts                   — copy from reference
+  serviceDescriptions.ts     — copy + extend from reference
+  workflowDescriptions.ts    — copy + extend from reference
+app/api/
+  executions/route.ts        — Supabase list (no FastAPI)
+  executions/[id]/route.ts   — Supabase single
+  uptime/route.ts            — Uptime Kuma proxy
+```
+
+### Dependencies to Install
+```bash
+npm install @tanstack/react-query framer-motion date-fns
+# Note: HeroUI NOT needed — we use custom divs styled to WorldPort palette
+# Note: FastAPI/Python NOT needed — Next.js routes replace the backend
+```
+
+### Styling Rules
+
+Adapt reference CSS vars to WorldPort palette (defined in `globals.css`):
+```css
+/* Panel glass */
+background: rgba(255,255,255,0.02);
+backdrop-filter: blur(24px) saturate(1.4);
+border: 1px solid rgba(255,255,255,0.07);
+border-radius: 20px;
+width: 340px;
+max-height: 70vh;
+overflow-y: auto;
+
+/* Font */
+font-family: 'JetBrains Mono', monospace; /* install via next/font/google */
+
+/* Status */
+--ok:  #00ff88;  /* success / operational */
+--err: #ff3355;  /* error / outage */
+--wrn: #ffaa00;  /* running / degraded */
+
+/* Row left border (adapted from reference StarBorder pattern) */
+border-left: 2px solid [status-color];
+
+/* Drawer (adapted from ServiceDetailDrawer) */
+position: fixed;
+right: 0; /* WorkflowDrawer */ /* left: 0 for ServiceDrawer */
+top: 0; height: 100vh; width: 380px;
+background: rgba(6,10,22,0.94);
+backdrop-filter: blur(32px);
+border-left: 1px solid rgba(255,255,255,0.08);
+z-index: 200;
+```
+
+### Task List
+
+**Data Layer:**
+- [ ] Install: `npm install @tanstack/react-query framer-motion date-fns`
+- [ ] Copy `lib/types.ts` from reference verbatim
+- [ ] Copy `lib/serviceDescriptions.ts` + extend with beszel, browserless, whisper, chatwoot, twenty
+- [ ] Copy `lib/workflowDescriptions.ts` + add error-alert, book-summary, manga-monitor, youtube-obsidian
+- [ ] Create `lib/api.ts` (WorldPort version — hits /api/* not FastAPI)
+- [ ] Create `app/api/executions/route.ts` (Supabase list)
+- [ ] Create `app/api/executions/[id]/route.ts` (Supabase single)
+- [ ] Create `app/api/uptime/route.ts` (Uptime Kuma public API proxy)
+- [ ] Add `QueryClientProvider` to `app/layout.tsx` (copy Providers.tsx pattern)
+
+**Components:**
+- [ ] `components/dashboard/MissionControlSection.tsx` — GSAP scroll trigger, panel positioning
+- [ ] `components/dashboard/WorkflowPanel/index.tsx` — React Query hook, search/filter, row list
+- [ ] `components/dashboard/WorkflowPanel/Row.tsx` — adapted from ExecutionTable row logic
+- [ ] `components/dashboard/WorkflowPanel/Drawer.tsx` — adapted from ExecutionDetailPanel + WorkflowVisualizer
+- [ ] `components/dashboard/FleetPanel/index.tsx` — useUptimeStatus, service list
+- [ ] `components/dashboard/FleetPanel/Row.tsx` — adapted from UptimeKuma monitor row
+- [ ] `components/dashboard/FleetPanel/Drawer.tsx` — adapted from ServiceDetailDrawer (framer-motion)
+- [ ] Add `MissionControlSection` to `app/page.tsx`
+- [ ] Install JetBrains Mono via `next/font/google`
+- [ ] Mobile: stack panels vertically, drawers slide up from bottom
+- [ ] Test: panels slide in/out on scroll, drawers open/close, Supabase data loads, Uptime Kuma responds
+
+---
+
+## Phase 11 — Work + About Sections (Bottom, Left-to-Middle)
+
+**Goal**: Below the dashboard, the page transitions to content. Work and About sections occupy the left-to-center zone of the viewport. The right side stays open for the globe as it continues its scroll journey.
 
 ### Layout
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  // 02 // AUTOMATION_OPS                          │  // 03 // FLEET_STATUS                  │
-│  ● LIVE_FEED                                      │  ● LIVE_SYNC                            │
-│                                                   │                                         │
-│  [SEARCH_NODE...]           [ALL_SYSTEMS ▼]       │  [ service list ]                       │
-│                                                   │                                         │
-│  WORKFLOW          ST      TIME     DUR            │  Radarr     HTTP // OPERATIONAL ●       │
-│  ───────────────────────────────────────────────  │  Sonarr     HTTP // OPERATIONAL ●       │
-│  Error Alert       ✓ SUCCESS  34m    0.8s         │  NextCloud  HTTP // OUTAGE    ●       │
-│  Upwork Scraper    ✕ ERROR    37m    187s         │  n8n        HTTP // OPERATIONAL ●       │
-│  Book Summary      ✓ SUCCESS  2h     347s         │  ...                                     │
-│  ...                                              │                                         │
-└──────────────────────────────────────────────────────────────────────────────┘
+[SCROLL 75%+]
+┌────────────────────────────────────────────────────────────────────────────┐
+│ [WORK + ABOUT — left 60%]              [Globe scrolling right 40%] │
+│                                                                    │
+│ // CASE_STUDIES                                                    │
+│ [case study cards from Directus]                                   │
+│                                                                    │
+│ // WHO_I_AM                                                        │
+│ [about content from Directus]                                      │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Click any row → side drawer slides in with full details.
-
-### 10.1 — Component Architecture
-
-```
-components/
-  dashboard/
-    MissionControlSection.tsx  — outer section, scroll trigger, two-panel layout
-    WorkflowFeed.tsx           — left panel, n8n execution log
-    WorkflowRow.tsx            — single row: name, status badge, time, duration
-    WorkflowDrawer.tsx         — slide-in detail panel (what it does, what it solves, exec graph)
-    FleetStatus.tsx            — right panel, service health grid
-    ServiceRow.tsx             — single service: name, protocol, status dot
-    ServiceDrawer.tsx          — slide-in: what it does, what it replaces, protocol, status
-```
-
-### 10.2 — WorkflowFeed (Left Panel)
-
-**Data source**: Supabase `workflow_executions` table, ordered by `started_at DESC`, limit 20.
-
-**Display columns:**
-- `WORKFLOW` — name + short ID fragment (hover reveals full)
-- `ST` — status badge: `● SUCCESS` (green), `● ERROR` (red), `● RUNNING` (yellow pulse)
-- `TIME` — relative time ago ("34 minutes", "2 hours")
-- `DUR` — duration in seconds
-
-**WorkflowDrawer** (click to open):
-```
-// WHAT_THIS_WORKFLOW_DOES
-One clear sentence: what it automates.
-
-// WHAT_IT_SOLVES
-One clear sentence: what manual pain it eliminates.
-
-// STARTED / LATENCY / NODES / MODE
-Meta grid.
-
-// EXECUTION_PROCESS
-Vertical step graph: trigger → node → node → output.
-Each step shows node name + status icon (success/error/skip).
-```
-
-**UX:**
-- Monospace font throughout (`font-mono`)
-- Row left border: `2px solid` green (success) / red (error) / yellow (running)
-- Row hover: subtle bg lift `rgba(255,255,255,0.03)`
-- Drawer slides in from right, 380px wide, glass background
-- Search box filters by workflow name client-side
-- Status filter dropdown: ALL / SUCCESS / ERROR / RUNNING
-- Auto-refreshes every 30s via Supabase realtime or polling
-
-### 10.3 — FleetStatus (Right Panel)
-
-**Data source**: Supabase `service_status` table, ordered by `name ASC`.
-
-**Display per row:**
-- Service name (monospace, uppercase)
-- Protocol label (`HTTP` / `TCP` in muted text)
-- Status dot: `●` green (operational) / red (outage) / yellow (degraded)
-
-**ServiceDrawer** (click to open):
-```
-[service name] — [protocol] ● [status]
-
-// WHAT_IT_DOES
-[what_it_does from Supabase — clear, no jargon]
-
-// WHAT_IT_REPLACES
-[what_it_replaces from Supabase — what this service makes obsolete]
-
-// STACK_DETAILS
-Protocol: HTTP | Status: OPERATIONAL
-```
-
-**Service copy guide** (seed into Supabase `service_status.what_it_does` + `what_it_replaces`):
-
-| Service | what_it_does | what_it_replaces |
-|---|---|---|
-| n8n | Orchestrates all automation workflows — triggers, logic, and API calls in one place | Zapier, Make.com, and writing glue scripts by hand |
-| Radarr | Monitors and auto-downloads movies based on quality profiles | Manually tracking releases and downloading files |
-| Sonarr | Same as Radarr but for TV series, episode by episode | Manually checking show feeds and managing files |
-| Browserless | Headless Chrome API for Playwright automations without a local browser | Running Chrome on a dev machine; fragile local browser sessions |
-| SearXNG | Privacy-respecting metasearch engine that aggregates results without tracking | Google and Bing, which log every query and personalize results |
-| Whisper | Local speech-to-text transcription for audio and video files | Paying for cloud transcription APIs per minute |
-| Chatwoot | Self-hosted customer messaging hub — inbox for all channels | Intercom, Crisp, or juggling multiple chat tabs manually |
-| Twenty CRM | Open-source CRM for tracking leads and client relationships | Notion databases or spreadsheets as makeshift CRMs |
-| SpiderFoot | OSINT automation for reconnaissance and data gathering | Running manual lookups across a dozen separate tools |
-| Nextcloud | Self-hosted file sync and collaboration platform | Google Drive and Dropbox, with their data privacy tradeoffs |
-| Jellyfin | Self-hosted media server that streams to any device | Netflix subscriptions for content I already own |
-| SyncThing | Continuous file sync between machines without a cloud middleman | Dropbox or manual USB transfers |
-
-**UX:**
-- Section header: `// 03 // FLEET_STATUS ✓` + `● LIVE_SYNC` indicator
-- Status dot pulses on `outage` or `degraded`
-- Drawer matches WorkflowDrawer glass style
-- Shows total counts: `12 SERVICES — 11 OPERATIONAL — 1 OUTAGE`
-
-### 10.4 — MissionControlSection Scroll Trigger
-
-```tsx
-// Section appears at ~50% page scroll
-// GSAP ScrollTrigger: fade in from below + slight Y translate
-gsap.from('.mission-control', {
-  opacity: 0, y: 60,
-  scrollTrigger: {
-    trigger: '.mission-control',
-    start: 'top 80%',
-    end: 'top 40%',
-    scrub: false,
-    once: true,
-  }
-});
-```
-
-**Tasks:**
-- [ ] Create `components/dashboard/` directory + all 7 component files
-- [ ] `MissionControlSection.tsx`: two-column layout, section heading, GSAP entrance
-- [ ] `WorkflowFeed.tsx`: fetch from Supabase `workflow_executions`, search + filter, auto-refresh 30s
-- [ ] `WorkflowRow.tsx`: name, status badge, relative time, duration, left border color
-- [ ] `WorkflowDrawer.tsx`: slide-in drawer, what it does / what it solves, step graph, meta grid
-- [ ] `FleetStatus.tsx`: fetch from Supabase `service_status`, count summary header
-- [ ] `ServiceRow.tsx`: name, protocol, animated status dot
-- [ ] `ServiceDrawer.tsx`: slide-in drawer, what_it_does, what_it_replaces, stack details
-- [ ] Integrate `MissionControlSection` into `app/page.tsx` at ~50% scroll position
-- [ ] Seed `service_status` table with all services + copy from table above
-- [ ] Create n8n "heartbeat" node snippet: POST to Supabase after every workflow run
-- [ ] Create n8n Uptime Kuma poller workflow (every 5 min → upsert service_status)
-- [ ] Style audit: monospace fonts, glass drawers, terminal color palette matches site theme
-- [ ] Mobile: stack panels vertically, drawers full-width slide-up from bottom
-
-### 10.5 — Styling Rules for Dashboard
-
-The dashboard lives inside the WorldPort aesthetic. It should feel like a terminal window floating in space — not a SaaS dashboard.
-
-```css
-/* Panel glass */
-background: rgba(255, 255, 255, 0.02);
-backdrop-filter: blur(20px) saturate(1.4);
-border: 1px solid rgba(255, 255, 255, 0.08);
-border-radius: 16px;
-
-/* Monospace everything */
-font-family: 'JetBrains Mono', 'Fira Code', monospace;
-
-/* Status colors */
---status-ok:  #00ff88;    /* green — operational */
---status-err: #ff3355;    /* red — outage/error */
---status-wrn: #ffaa00;    /* amber — degraded/running */
-
-/* Row hover */
-background: rgba(255, 255, 255, 0.03);
-transition: background 150ms ease;
-
-/* Drawer */
-position: fixed; right: 0; top: 0; height: 100vh;
-width: 380px;
-background: rgba(8, 14, 28, 0.92);
-backdrop-filter: blur(32px);
-border-left: 1px solid rgba(255, 255, 255, 0.1);
-```
-
-**Font**: install JetBrains Mono via `next/font/google` or self-host. Used exclusively in dashboard components.
+### Tasks
+- [ ] Refactor current hero `page.tsx` — extract Work + About into `components/sections/`
+- [ ] `WorkSection.tsx` — fetch `case_studies` from Directus, render cards left-to-center
+- [ ] `AboutSection.tsx` — fetch `about` singleton from Directus, render with reveal-text GSAP
+- [ ] Layout: `max-w-[60vw]` content, right zone empty for globe
+- [ ] Case study card: title, hook, stack tags, date, link to `/work/[slug]`
+- [ ] `app/work/[slug]/page.tsx` — fetch from Directus `case_studies` by slug, render markdown body
 
 ---
 
+## Phase 12 — Footer Tech Stack Carousel
 
-- Keep MDX frontmatter consistent: `title`, `slug`, `date`, `stack[]`, `hook`, `readTime`
+**Goal**: Full-width footer with an infinite auto-scrolling carousel of tech stack icons. Subtle, on-brand, not cluttered.
+
+### Carousel Behavior
+- Infinite horizontal scroll (CSS marquee or GSAP ticker)
+- Two rows: top row scrolls left, bottom row scrolls right (counter-direction)
+- Icons: SVG logos, monochrome white at 40% opacity, brightens on hover to 100%
+- Speed: slow drift, ~40s per loop
+- No click behavior — purely decorative
+
+### Tech Stack Icons to Include
+```
+Row 1: n8n, Python, TypeScript, Next.js, Three.js, GSAP, Docker, Supabase,
+        PostgreSQL, Directus, Playwright, GitHub Actions
+Row 2: Tailwind CSS, React, Node.js, Proxmox, Cloudflare, Linux, Obsidian,
+        Claude API, LM Studio, Dokploy, Jupyter, Figma
+```
+
+### ReactBits Component
+Use `InfiniteScroll` from ReactBits (https://reactbits.dev/components/infinite-scroll) — adapted for icon rows.
+
+### Implementation
+- `components/footer/TechCarousel.tsx` — two-row marquee
+- `components/footer/Footer.tsx` — contains carousel + minimal footer text (name, year, “Built in Pasig City”)
+- Icon source: `simple-icons` npm package (`npm install simple-icons`) for SVG paths
+
+### Tasks
+- [ ] Install: `npm install simple-icons`
+- [ ] Create `components/footer/TechCarousel.tsx` — two-row infinite marquee
+- [ ] Create `components/footer/Footer.tsx` — carousel + copyright line
+- [ ] Add Footer to `app/layout.tsx` (below main content, above cursor)
+- [ ] Tune: speed, opacity, hover effect, icon sizing (40px)
+- [ ] Test on mobile: single row, same drift speed
+
+---
+
+## Notes
 - Case studies are the product. Write them well.
 - The galaxy theme is load-bearing for the brand. Don't simplify it out.
 - Built by Aldrin Roxas, Pasig City, PH — solo operator, automation architect.
+- Uptime monitoring: **Glance** (not Uptime Kuma) at `192.168.100.144:3001`
+- Directus collections: `about`, `blog_posts`, `case_studies`, `content_ideas`, `social_posts`, `ai_prompts`, `github`
+- **Schema Notes**:
+  - `about`: bio, philosophy, current_focus, whoiam_section (all markdown)
+  - `case_studies`: title, slug, hook, body, outcome, stack (comma-separated string)
+  - `blog_posts`: title, slug, excerpt, content, read_time
+- Supabase `workflow_executions` already receiving data from n8n
+- ReactBits (https://reactbits.dev) for animated UI components compatible with the theme
 
 ---
 *— Minis*

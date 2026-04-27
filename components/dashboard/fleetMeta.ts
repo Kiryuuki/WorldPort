@@ -1,0 +1,15 @@
+export const FLEET_META: Record<string, { does: string; replaces: string }> = {
+  'n8n':        { does: 'Orchestrates every automation workflow — triggers, conditional logic, and API calls without writing server code.', replaces: 'Zapier, Make.com, and fragile glue scripts that break on every API update.' },
+  'Radarr':     { does: 'Monitors movie release feeds and auto-downloads to exact quality specs the moment a release is available.', replaces: 'Manually tracking release dates and hunting download links across sketchy sites.' },
+  'Sonarr':     { does: 'Same as Radarr but for TV series — tracks episodes individually and handles season packs automatically.', replaces: 'Checking show feeds daily and managing episode files by hand.' },
+  'Browserless':{ does: 'Runs headless Chrome as an always-on API so Playwright automations work without a local browser session.', replaces: 'Spinning up Chrome on a dev machine for scraping — fragile, blocks on sleep, dies on disconnect.' },
+  'SearXNG':    { does: 'Aggregates results from 70+ search engines into one private, untracked search interface.', replaces: 'Google and Bing, which profile every query and filter results through personalization bubbles.' },
+  'Whisper':    { does: 'Transcribes audio and video files locally with near-OpenAI accuracy at zero per-minute cost.', replaces: 'Cloud transcription APIs that charge by the minute and send audio to third-party servers.' },
+  'Chatwoot':   { does: 'Centralizes all client messaging — email, Telegram, WhatsApp — into one inbox with team assignment.', replaces: 'Juggling separate apps for every channel and losing message history across context switches.' },
+  '20 CRM':     { does: 'Tracks leads, client relationships, and deal stages with a clean open-source CRM that n8n writes to directly.', replaces: 'Notion databases or spreadsheets acting as CRMs — no pipeline view, no automation hooks.' },
+  'Nextcloud':  { does: 'Self-hosted file sync across all devices with calendar, contacts, and collaborative editing included.', replaces: 'Google Drive and Dropbox — data lives on their servers, not yours.' },
+  'Jellyfin':   { does: 'Streams personal media library to any device with transcoding, subtitles, and no subscription.', replaces: 'Streaming subscriptions for content already owned, with no offline access.' },
+  'SyncThing':  { does: 'Syncs files between machines directly — no cloud relay, no third party, just device-to-device.', replaces: 'Dropbox or manual USB transfers for moving files between the homelab and laptop.' },
+  'beszel':     { does: 'Monitors server resource usage — CPU, RAM, disk, network — across all homelab nodes in one dashboard.', replaces: 'SSH-ing into each machine separately to check htop when something feels slow.' },
+  'SpiderFoot': { does: 'Automates OSINT data gathering for research and lead intelligence workflows.', replaces: 'Running manual lookups across a dozen separate recon tools.' },
+};
