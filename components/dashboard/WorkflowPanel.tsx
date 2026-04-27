@@ -15,9 +15,12 @@ async function fetchExecutions(search: string) {
   return res.json();
 }
 
-export const WorkflowPanel: React.FC = () => {
+interface WorkflowPanelProps {
+  onSelect: (exec: any) => void;
+}
+
+export const WorkflowPanel: React.FC<WorkflowPanelProps> = ({ onSelect }) => {
   const [search, setSearch]     = useState('');
-  const [selected, setSelected] = useState<any | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey:        ['executions', search],
@@ -142,14 +145,12 @@ export const WorkflowPanel: React.FC = () => {
             <WorkflowRow
               key={exec.id}
               execution={exec}
-              active={selected?.id === exec.id}
-              onClick={() => setSelected(exec)}
+              active={false} // Simplified for now since state is lifted
+              onClick={() => onSelect(exec)}
             />
           ))}
         </div>
       </div>
-
-      <WorkflowDrawer execution={selected} onClose={() => setSelected(null)} />
     </>
   );
 };

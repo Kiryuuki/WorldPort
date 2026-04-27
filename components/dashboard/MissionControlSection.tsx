@@ -8,7 +8,12 @@ import { FleetPanel } from './FleetPanel';
 
 gsap.registerPlugin(ScrollTrigger);
 
-export const MissionControlSection: React.FC = () => {
+interface MissionControlSectionProps {
+  onSelectWorkflow: (exec: any) => void;
+  onSelectService: (service: any) => void;
+}
+
+export const MissionControlSection: React.FC<MissionControlSectionProps> = ({ onSelectWorkflow, onSelectService }) => {
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
 
@@ -16,38 +21,38 @@ export const MissionControlSection: React.FC = () => {
     if (!leftRef.current || !rightRef.current) return;
 
     const ctx = gsap.context(() => {
+      // Set initial state
+      gsap.set([leftRef.current, rightRef.current], { autoAlpha: 0 });
+
       // MASTER TIMELINE: Combined for consistency in both scroll directions
       const masterTl = gsap.timeline({
         scrollTrigger: {
-          trigger: document.body,
+          trigger: 'body',
           start: '15% top',
-          end: '60% top', // End earlier to avoid overlap with Work section (starts at 66%)
+          end: '60% top', 
           scrub: 1,
         }
       });
       
       // 1. SLIDE IN (mapped from 15% to 30% scroll)
-      // Percentage of timeline: (30 - 15) / (60 - 15) = 15 / 45 = 0.33
       masterTl.fromTo(leftRef.current, 
-        { x: '-100vw', opacity: 0 }, 
-        { x: 0, opacity: 1, ease: 'power2.out', duration: 0.33 }, 
+        { x: '-100vw', autoAlpha: 0 }, 
+        { x: 0, autoAlpha: 1, ease: 'power2.out', duration: 0.33 }, 
         0
       );
       masterTl.fromTo(rightRef.current, 
-        { x: '100vw', opacity: 0 }, 
-        { x: 0, opacity: 1, ease: 'power2.out', duration: 0.33 }, 
+        { x: '100vw', autoAlpha: 0 }, 
+        { x: 0, autoAlpha: 1, ease: 'power2.out', duration: 0.33 }, 
         0
       );
       
       // 2. WAIT (Stay visible until 50% scroll)
-      // Percentage of timeline: (50 - 15) / (45) = 0.77
       const fadeStartTime = 0.77;
       
       // 3. SLIDE OUT (mapped from 50% to 60% scroll)
-      // Fading back to original off-screen positions
       masterTl.to(leftRef.current, {
         x: '-100vw',
-        opacity: 0, 
+        autoAlpha: 0, 
         filter: "blur(10px)",
         ease: 'power2.in',
         duration: 1 - fadeStartTime
@@ -55,7 +60,7 @@ export const MissionControlSection: React.FC = () => {
       
       masterTl.to(rightRef.current, {
         x: '100vw',
-        opacity: 0, 
+        autoAlpha: 0, 
         filter: "blur(10px)",
         ease: 'power2.in',
         duration: 1 - fadeStartTime
@@ -73,7 +78,7 @@ export const MissionControlSection: React.FC = () => {
           className="pointer-events-auto"
           data-lenis-prevent
         >
-          <WorkflowPanel />
+          <WorkflowPanel onSelect={onSelectWorkflow} />
         </div>
 
         <div 
@@ -81,7 +86,7 @@ export const MissionControlSection: React.FC = () => {
           className="pointer-events-auto"
           data-lenis-prevent
         >
-          <FleetPanel />
+          <FleetPanel onSelect={onSelectService} />
         </div>
       </div>
     </div>

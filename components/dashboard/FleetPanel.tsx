@@ -13,9 +13,11 @@ async function fetchUptime() {
   return res.json();
 }
 
-export const FleetPanel: React.FC = () => {
-  const [selected, setSelected] = useState<any | null>(null);
+interface FleetPanelProps {
+  onSelect: (service: any) => void;
+}
 
+export const FleetPanel: React.FC<FleetPanelProps> = ({ onSelect }) => {
   const { data, isLoading, isError } = useQuery({
     queryKey:        ['uptime'],
     queryFn:         fetchUptime,
@@ -117,14 +119,12 @@ export const FleetPanel: React.FC = () => {
             <ServiceRow
               key={service.id}
               service={service}
-              active={selected?.id === service.id}
-              onClick={() => setSelected(service)}
+              active={false} // Simplified for now since state is lifted
+              onClick={() => onSelect(service)}
             />
           ))}
         </div>
       </div>
-
-      <ServiceDrawer service={selected} onClose={() => setSelected(null)} />
     </>
   );
 };

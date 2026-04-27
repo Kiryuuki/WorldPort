@@ -96,16 +96,17 @@ export type About = {
   philosophy: string;
   current_focus: string;
   whoiam_section: string;
+  stack?: string;
 };
 
 export async function getAbout() {
   if (typeof window !== 'undefined') return null;
   if (!directus.url || directus.url.toString().includes('fallback.invalid')) return null;
   try {
-    const item = await directus.request(
+    const items = await directus.request(
       readItems('about')
     );
-    return item as unknown as About;
+    return (items?.[0] || items || null) as unknown as About;
   } catch (e) {
     console.error("Directus About Error:", e);
     return null;

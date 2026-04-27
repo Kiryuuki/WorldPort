@@ -43,9 +43,15 @@ export const canvasSettings = {
       boxShadow: "inset 0 0 50px rgba(0, 0, 0, 0.4)",
     },
     scrollJourney: {
-      // Phase 1 (0% - 33%): Globe moves from bottom to absolute center.
+      // Starting state (0% scroll)
+      start: {
+        offXMult: -0.25,      // Corner right
+        offYMult: -0.1,
+        dist: 1400,
+      },
+      // Phase 1 (0% - 33%): Globe moves from corner to absolute center.
       phase1: {
-        duration: 1, // GSAP relative duration within the scrub
+        duration: 1, 
         offX: 0,
         offY: 0,
         dist: 1600,
@@ -59,13 +65,12 @@ export const canvasSettings = {
         dist: 1600,
         ease: "none"
       },
-      // Phase 3 (66% - 100%): Globe slides to right corner (Work/About focus).
+      // Phase 3 (66% - 100%): Globe moves to zoomed-in center position.
       phase3: {
         duration: 1,
-        // Calculate W and H multipliers. Previously offX: -W * 0.25, offY: -H * 0.1
-        offXMult: -0.25,
-        offYMult: -0.1,
-        dist: 1400,
+        offXMult: 0,          // Center
+        offYMult: -0.75,      // Bottom
+        dist: 950,            // Zoomed in
         ease: "power2.inOut"
       }
     }

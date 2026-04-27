@@ -142,12 +142,23 @@ export const EarthCanvas: React.FC = () => {
     globeGroup.add(points);
 
     // ─── Scroll Journey ──────────────────────────────────────────────────────
-    const scrollState = { offX: 0, offY: -H * 0.75, dist: 950 };
     const journey = canvasSettings.globe.scrollJourney;
+    const scrollState = { 
+      offX: W * journey.start.offXMult, 
+      offY: H * journey.start.offYMult, 
+      dist: journey.start.dist 
+    };
     
-    const tl = gsap.timeline({ scrollTrigger: { trigger: "body", start: "top top", end: "bottom bottom", scrub: 1.5 } });
+    const tl = gsap.timeline({ 
+      scrollTrigger: { 
+        trigger: "body", 
+        start: "top top", 
+        end: "bottom bottom", 
+        scrub: 1.5 
+      } 
+    });
     
-    // Phase 1
+    // Phase 1: From Corner to Center
     tl.to(scrollState, { 
       offX: journey.phase1.offX, 
       offY: journey.phase1.offY, 
@@ -155,7 +166,7 @@ export const EarthCanvas: React.FC = () => {
       duration: journey.phase1.duration, 
       ease: journey.phase1.ease 
     })
-    // Phase 2
+    // Phase 2: Stay Center
     .to(scrollState, { 
       offX: journey.phase2.offX, 
       offY: journey.phase2.offY, 
@@ -163,7 +174,7 @@ export const EarthCanvas: React.FC = () => {
       duration: journey.phase2.duration, 
       ease: journey.phase2.ease 
     })
-    // Phase 3
+    // Phase 3: Move to Zoomed-in Bottom Center
     .to(scrollState, { 
       offX: W * journey.phase3.offXMult, 
       offY: H * journey.phase3.offYMult, 

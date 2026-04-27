@@ -84,7 +84,7 @@ export const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({ execution, onClo
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[190] cursor-pointer"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[190] cursor-pointer pointer-events-auto"
           />
 
           {/* Drawer — slides from left */}
@@ -93,7 +93,7 @@ export const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({ execution, onClo
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed top-0 left-0 h-full w-[480px] z-[200] flex flex-col overflow-y-auto"
+            className="fixed top-0 left-0 h-full w-[480px] z-[200] flex flex-col overflow-y-auto pointer-events-auto"
             style={{
               fontFamily:     "'JetBrains Mono', monospace",
               background:     'rgba(6,10,22,0.98)',

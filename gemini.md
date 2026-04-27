@@ -142,6 +142,32 @@ Every page is a blog entry in disguise. Every case study is a story with a probl
 
 ## Changelog
 
+### 2026-04-27 — Phase 14: Hero + About Me Redesign (Dash)
+- **`AboutPanel.tsx`** — full rewrite
+  - Removed: glass wrapper, status bar, 2x2 grid, SYSTEM_ID header
+  - Added: hero text zone (label → h1 → subtitle), capped `max-w-[45vw]`
+  - Added: GSAP entrance stagger (label→h1→sub delay 0.15s each, strip at 1.0s)
+  - Globe stays right via EarthCanvas — no canvas changes
+- **`AboutInfoCard.tsx`** — new component
+  - Styled from Image 2 workflow feed: `rgba(10,12,28,0.85)` bg, `rgba(255,255,255,0.07)` border, 16px radius
+  - Icon (16px) + label (10px, accent, tracking-widest, monospace) inline row
+  - Body: 13px, `rgba(255,255,255,0.6)`, JetBrains Mono, line-height 1.65
+- **`AboutInfoStrip.tsx`** — new component
+  - 4-card grid: `grid-cols-2` mobile/tablet, `md:grid-cols-4` desktop
+  - Horizontal rule separator above strip
+  - Receives `cards[]` data from `AboutPanel`
+- **`app/page.tsx`** — hero div updated
+  - `items-center` → `items-stretch`, added `pt-24 pb-8` for nav clearance + bottom breathing room
+  - Inner div: `flex flex-col justify-between` so strip pins to bottom of viewport
+- Content: static fallbacks + Directus `about` field mapping (bio, philosophy, stack, current_focus)
+
+### 2026-04-27 — Mission Control Restoration & Architecture Cleanup (Dash)
+- **Drawer Interactivity Fix**: Lifted `selected` state to `app/page.tsx` and added `pointer-events-auto` to `WorkflowDrawer` and `ServiceDrawer`. This prevents them from being trapped in transformed GSAP containers or blocked by the `fixed inset-0` parent.
+- **Overlapping Events Fix**: Switched to `autoAlpha: 0` in GSAP for MissionControl and Project sections. This ensures inactive sections (like Case Studies while on Hero) don't intercept pointer events.
+- **Glance Removal**: Deleted `lib/glance.ts` and `app/api/fleet/`. All uptime monitoring is now exclusively handled by **Uptime Kuma** via `/api/uptime`.
+- **Sync Conflict Cleanup**: Purged all `.sync-conflict-*` files from the project.
+- **Project Section Range**: Adjusted GSAP triggers to `55% to 75%` to ensure Case Studies/About panels are fully visible and reachable.
+
 ### 2026-04-26 — StarCanvas: visible stars rewrite (Dash)
 **Root causes of invisible stars:**
 1. Count too low — `W*H/2200` ≈ 400 stars at 1080p. Fixed: 320+180+80 = 580 fixed per layer
@@ -483,6 +509,15 @@ worldport/
 ├── app/
 │   ├── about/
 │   │   └── page.tsx
+│   ├── api/
+│   │   ├── content/
+│   │   │   └── route.ts
+│   │   ├── executions/
+│   │   │   ├── [id]/
+│   │   │   │   └── route.ts
+│   │   │   └── route.ts
+│   │   └── uptime/
+│   │       └── route.ts
 │   ├── blog/
 │   │   └── page.tsx
 │   ├── contact/
@@ -491,7 +526,6 @@ worldport/
 │   │   ├── [slug]/
 │   │   │   └── page.tsx
 │   │   └── page.tsx
-│   ├── favicon.ico
 │   ├── globals.css
 │   ├── layout.tsx
 │   └── page.tsx
@@ -502,15 +536,29 @@ worldport/
 │   │   ├── DustCanvas.tsx
 │   │   ├── EarthCanvas.tsx
 │   │   ├── StarCanvas.tsx
-│   │   ├── UniverseCanvas.tsx
-│   │   └── VignetteCanvas.tsx
+│   │   └── UniverseCanvas.tsx
+│   ├── dashboard/
+│   │   ├── AboutPanel.tsx
+│   │   ├── CaseStudiesPanel.tsx
+│   │   ├── CaseStudyRow.tsx
+│   │   ├── fleetMeta.ts
+│   │   ├── FleetPanel.tsx
+│   │   ├── MissionControlSection.tsx
+│   │   ├── ProjectSection.tsx
+│   │   ├── ServiceDrawer.tsx
+│   │   ├── ServiceRow.tsx
+│   │   ├── WorkflowDrawer.tsx
+│   │   ├── workflowMeta.ts
+│   │   ├── WorkflowPanel.tsx
+│   │   └── WorkflowRow.tsx
 │   ├── nav/
 │   │   └── GlassNav.tsx
 │   ├── ui/
-│   │   ├── CharacterReveal.tsx
-│   │   └── FloatingPills.tsx
+│   │   └── (various UI components)
+│   ├── HomeContent.tsx
 │   ├── LenisProvider.tsx
 │   ├── PageTransition.tsx
+│   ├── Providers.tsx
 │   └── WorkList.tsx
 ├── content/
 │   └── work/
@@ -519,33 +567,16 @@ worldport/
 │       └── yt-knowledge-base.mdx
 ├── lib/
 │   ├── canvas-settings.ts
-│   └── posts.ts
+│   ├── content.ts
+│   ├── directus.ts
+│   ├── posts.ts
+│   └── supabase.ts
 ├── public/
-│   ├── textures/
-│   │   ├── 2k_earth_clouds.jpg
-│   │   ├── circle.png
-│   │   ├── earth-bg-day.png
-│   │   ├── earth-bg.png
-│   │   ├── earth-bump.jpg
-│   │   ├── earth-color.jpg
-│   │   └── earth-spec.jpg
-│   ├── file.svg
-│   ├── globe.svg
-│   ├── next.svg
-│   ├── vercel.svg
-│   └── window.svg
-├── AGENTS.md
-├── CLAUDE.md
-├── eslint.config.mjs
-├── gemini.md
-├── next-env.d.ts
+│   └── textures/
+├── Dockerfile
 ├── next.config.ts
-├── package-lock.json
 ├── package.json
-├── postcss.config.mjs
-├── README.md
-├── tsconfig.json
-└── _earth_return.txt
+└── tsconfig.json
 ```
 
 
@@ -594,9 +625,8 @@ DIRECTUS_TOKEN=your_static_token
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# Glance (homelab uptime)
-GLANCE_URL=http://192.168.100.144:3001
-GLANCE_API_KEY=your_key
+# Uptime Kuma (homelab uptime)
+UPTIME_KUMA_URL=http://192.168.100.144:3001
 ```
 
 **`.env.example`** — commit this:
@@ -605,8 +635,7 @@ DIRECTUS_URL=
 DIRECTUS_TOKEN=
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
-GLANCE_URL=
-GLANCE_API_KEY=
+UPTIME_KUMA_URL=
 ```
 
 ### 9.2 — Install Dependencies
@@ -689,14 +718,14 @@ workflow_data (JSON blob), created_at
 `workflow_data` contains workflow definition: nodes array with names, types, positions.
 
 **Tasks:**
-- [x] Create `lib/directus.ts`, `lib/supabase.ts`, `lib/content.ts`, `lib/glance.ts`
-- [x] Create `app/api/fleet/route.ts`
+- [x] Create `lib/directus.ts`, `lib/supabase.ts`, `lib/content.ts`
+- [x] Create `app/api/uptime/route.ts` (replaced Glance)
 - [x] Create `.env.example`
 - [x] Install deps: `@directus/sdk @supabase/supabase-js react-markdown remark-gfm`
 - [x] Update `/work` — fetch from `case_studies`
 - [x] Update `/blog` — fetch from `blog_posts`
 - [x] Update `/about` — fetch from `about` singleton
-- [x] Remove MDX pipeline from `next.config.ts`
+- [x] Remove MDX pipeline from `next.config.ts` (using Directus now)
 
 ---
 
@@ -1005,7 +1034,232 @@ z-index: 200;
 
 ---
 
-## Phase 11 — Work + About Sections (Bottom, Left-to-Middle)
+## Phase 14 — Hero + About Me Redesign (Homepage Top Section)
+
+**Goal**: The first thing visitors see is the full homepage hero with the About Me info strip at the bottom — hero text on the left, globe on the right (already in place via EarthCanvas), and a horizontal 4-card info strip anchored to the bottom of the viewport. No separate `/about` page needed for this — this is the homepage first impression.
+
+**Reference**: Image 1 (hero layout) + Image 2 (workflow feed styling language)
+
+### Layout Breakdown
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  [NAV — WORLDPORT logo left, links right]                         │
+│                                                                 │
+│  HI, I'M MARK ALDRIN ROXAS ●                [Globe occupies]  │
+│  I BUILD INTELLIGENT                        [right ~50% of]  │
+│  SYSTEMS THAT RUN                           [viewport via]   │
+│  THE BUSINESS.                              [EarthCanvas]    │
+│                                                                 │
+│  [subtitle text, 2-3 lines]                                     │
+│                                                                 │
+│  [─────────────────────────────────────────────────────────────]  │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
+│  │ 🗨 ORIGIN   │ │ 💡 PHILOS.. │ │ ⬡ STACK     │ │ ◎ CUR. FO.. │ │
+│  │ [text]      │ │ [text]      │ │ [text]      │ │ [text]      │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                              [4-card strip spans full width at bottom]
+```
+
+### What Changes vs Current State
+- `AboutPanel` currently renders as a large glass card on the left side
+- **New**: Split into two zones — hero text occupies left 45%, globe occupies right 55% (EarthCanvas already handles right side, no change needed)
+- **New**: 4-card horizontal strip at bottom of viewport, full width, above the scroll fold
+- **Style source**: Image 2 (workflow feed panel) — dark glass, `JetBrains Mono`, accent-colored uppercase labels with icons, body text at `text-white/65`
+
+### Hero Text Spec
+```
+Label:    "HI, I'M MARK ALDRIN ROXAS" — accent color (#6480ff), monospace, uppercase, tracking-widest, 12px
+H1:       "I BUILD INTELLIGENT SYSTEMS THAT RUN THE BUSINESS."
+          — white, bold, clamp(2.5rem, 5vw, 5rem), tight tracking, line-height 1.05
+Subtitle: 2-3 lines, text-white/55, 16px, Space Grotesk or monospace
+          "I'm a freelance automation developer who works at the intersection
+           of AI, workflow engineering, and frontend design."
+```
+No buttons. No CTAs. Clean.
+
+### 4-Card Strip Spec (styled from Image 2)
+```
+Container: full width, flex row, gap-4, px-6 md:px-20
+           anchored to bottom of hero viewport: absolute bottom-8 or fixed until scroll
+
+Each card:
+  background:   rgba(255,255,255,0.03)
+  border:       1px solid rgba(255,255,255,0.07)
+  border-radius: 16px
+  padding:      20px 24px
+  flex:         1 (equal width, 4 per row)
+
+  Icon:   lucide-react, 20px, accent color (same as workflow feed icons)
+  Label:  "ORIGIN" / "PHILOSOPHY" / "STACK" / "CURRENT FOCUS"
+          — accent color, uppercase, tracking-widest, 10px, monospace, beside icon
+  Body:   text-white/65, 13px, JetBrains Mono or Space Grotesk
+          2-4 lines max per card
+```
+
+### Card Content (static, with Directus override)
+| Card | Icon (lucide) | Label | Static Content |
+|---|---|---|---|
+| 1 | `MessageCircle` | ORIGIN | "I'm a freelance automation developer who works at the intersection of AI, workflow engineering, and frontend design." |
+| 2 | `Lightbulb` | PHILOSOPHY | "Automation should feel invisible. The best systems are the ones that quietly do the work — no friction, no manual steps, just outcomes." |
+| 3 | `Layers` | STACK | "n8n, Python, Playwright, Claude/OpenAI APIs, Supabase, PostgreSQL, and HeroUI." |
+| 4 | `Crosshair` | CURRENT FOCUS | "Building an enterprise-grade portfolio platform with an Industrial Enterprise Architecture aesthetic — SpaceX/NVIDIA-inspired, mission-control style." |
+
+### Component Changes
+- **`components/about/AboutPanel.tsx`** — rewrite entirely:
+  - Remove: outer glass wrapper, 2x2 grid layout, top ABOUT ME header
+  - Add: hero text section (label + h1 + subtitle), capped at `max-w-[45vw]`
+  - Add: 4-card strip as separate sub-component at bottom
+- **`components/about/AboutInfoStrip.tsx`** — new component, 4-card horizontal row
+- **`components/about/AboutInfoCard.tsx`** — individual card (icon + label + body)
+- **`app/page.tsx`** — no structural changes needed; `AboutPanel` is already mounted in Phase 1 hero div
+
+### Styling Tokens (from Image 2 reference)
+```css
+/* Match workflow feed card language */
+--card-bg:      rgba(10, 12, 28, 0.85);
+--card-border:  rgba(255, 255, 255, 0.07);
+--card-radius:  16px;
+--label-color:  #6480ff;   /* accent — same as workflow status colors */
+--label-size:   10px;
+--body-color:   rgba(255, 255, 255, 0.65);
+--body-size:    13px;
+--font-mono:    'JetBrains Mono', monospace;
+```
+
+### Animation
+- Hero text: `gsap.from` on mount — `{ opacity: 0, y: 30, filter: 'blur(10px)', duration: 1, stagger: 0.15 }` on label, h1, subtitle in sequence
+- Cards: stagger in from bottom — `{ opacity: 0, y: 20, duration: 0.6, stagger: 0.1, delay: 0.8 }`
+- Scroll fade-out: existing GSAP scroll trigger in `page.tsx` already handles hero fade — keep as-is
+
+### Tasks
+- [ ] Rewrite `components/about/AboutPanel.tsx` — hero text zone (left 45%) only, no glass wrapper, no grid
+- [ ] Create `components/about/AboutInfoCard.tsx` — icon + label + body, styled from Image 2
+- [ ] Create `components/about/AboutInfoStrip.tsx` — 4-card flex row, full width, bottom of hero
+- [ ] Import and render `AboutInfoStrip` inside `AboutPanel` at the bottom
+- [ ] Install `lucide-react` if not already: `npm install lucide-react`
+- [ ] Install `JetBrains Mono` via `next/font/google` if not in globals.css
+- [ ] Wire Directus `about` data — use `origin`, `philosophy`, `stack`, `current_focus` fields; fall back to static content above
+- [ ] Verify layout: hero text left-aligned, globe visible on right, cards span full width at bottom
+- [ ] Verify scroll: existing `heroContentRef` fade-out still works, cards fade with it
+- [ ] Mobile: cards stack 2x2 grid (`grid-cols-2`) on tablet, single column on mobile
+- [ ] Update gemini.md changelog on completion
+
+### Dependencies
+- `lucide-react`: `npm install lucide-react`
+- `JetBrains Mono` via `next/font/google` (add to `globals.css` or `layout.tsx`)
+
+---
+
+
+
+**Goal**: Redesign `/about` to match the reference layout — a structured info panel grid on the left/center with the globe visible on the right. Consistent with the site's space/mission-control aesthetic. No resume feel.
+
+**Reference Layout** (from screenshot):
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ [ABOUT ME label]                                                │
+│                                                                 │
+│ ┌─────────────────────┐  ┌──────────────────────────────────┐  │
+│ │ 🌐 ORIGIN           │  │ 💡 PHILOSOPHY                    │  │
+│ │ [2-3 line bio]      │  │ [2-3 line philosophy]            │  │
+│ └─────────────────────┘  └──────────────────────────────────┘  │
+│                                                                 │
+│ ┌─────────────────────┐  ┌──────────────────────────────────┐  │
+│ │ ⬡ STACK             │  │ ◎ CURRENT FOCUS                  │  │
+│ │ [tools paragraph]   │  │ [what I'm building now]          │  │
+│ └─────────────────────┘  └──────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+     [all wrapped in outer glass panel with rounded corners]
+```
+
+**Globe behavior**: Stays fixed/visible on the right side (no change to EarthCanvas). The about panel floats left-center, max-width ~55vw, leaving right 40% clear for the globe. Below this section, the Case Studies grid and Footer span the full width of the container.
+
+### Design Spec
+- **About Panel**: `glass` card, `border-radius: 20px`, `border: 1px solid rgba(255,255,255,0.08)`, `backdrop-filter: blur(24px)`, `padding: 40px`
+  - Header: small `ABOUT ME` label with person icon, `text-[10px] uppercase tracking-widest text-accent`
+  - Grid: 2-column, 2-row (4 panels total)
+  - Each panel: icon + `SECTION_TITLE` (accent color, uppercase, tracking-widest, 10px) + paragraph text (`text-white/65`, 14px, monospace or Space Grotesk)
+  - Icons: simple line icons matching the reference (globe, lightbulb, layers/stack, target/crosshair)
+  - Panel spacing: `gap-8` between columns, `gap-6` between rows
+- **Case Studies Panel**: Full width glass panel below About.
+  - Header: `CASE STUDIES` with icon, "Selected Work" title, subtitle "Real projects. Real impact.", and "VIEW ALL CASE STUDIES" button on the right.
+  - Grid: Horizontal flex/grid of 4 cards.
+  - Cards: `glass` styling, icon top left, "PRODUCTION" tag top right, Title, Description, and Stack tags bottom left.
+- **Footer**: Full width glass panel below Case Studies.
+  - Left: "Let's build something automatic and impactful."
+  - Center: "BUILT WITH" and logos (n8n, Supabase, Claude, Docker)
+  - Right: "AVAILABLE FOR PROJECTS", green dot "Open to new opportunities", and "GET IN TOUCH" button
+- Content from `lib/directus.ts` `about` and `case_studies` singletons/collections
+- Static fallback if Directus unavailable
+
+### Layout in Page
+```tsx
+// app/about/page.tsx structure
+<div className="min-h-screen pt-28 px-8 space-y-12">
+  {/* Top Section: About Panel (Left) and Globe (Right) */}
+  <div className="flex items-start">
+    <div className="max-w-[55vw] w-full">  {/* leaves globe visible right */}
+      {/* outer glass panel */}
+      <div className="glass rounded-[20px] p-10">
+        {/* ABOUT ME header */}
+        {/* 2x2 grid */}
+      </div>
+    </div>
+  </div>
+
+  {/* Case studies (Full Width) */}
+  <div className="glass rounded-[20px] p-10">
+    {/* Case Studies Header */}
+    {/* Case Studies Grid/Cards */}
+  </div>
+
+  {/* Footer (Full Width) */}
+  <div className="glass rounded-[20px] p-6 flex justify-between items-center">
+    {/* Left: Text */}
+    {/* Center: Built With (n8n, Supabase, Claude, Docker) */}
+    {/* Right: Availability & CTA */}
+  </div>
+</div>
+```
+
+### Sections
+| Panel | Icon | Label | Content source |
+|---|---|---|---|
+| Top-left | 🌐 | ORIGIN | `about.bio` from Directus |
+| Top-right | 💡 | PHILOSOPHY | `about.philosophy` from Directus |
+| Bottom-left | ⬡ | STACK | `about.stack` or static list |
+| Bottom-right | ◎ | CURRENT FOCUS | `about.current_focus` from Directus |
+
+### Scroll Behavior
+- Hero text (`I BUILD SIGNAL FROM NOISE.`) stays at top
+- Glass panel animates in on page load: `gsap.from('.about-panel', { y: 40, opacity: 0, duration: 1, ease: 'power3.out' })`
+- Remove existing per-section blur reveal — too heavy for this compact layout
+- Keep `CharacterReveal` for the hero `h1` only
+
+### Tasks
+- [ ] Rewrite `app/about/page.tsx` — replace long-scroll sections with 2x2 glass panel grid, Case Studies, and Footer
+- [ ] Create `components/about/AboutPanel.tsx` — the outer glass container for the 2x2 grid
+- [ ] Create `components/about/AboutGrid.tsx` — 2x2 panel grid with icon + label + content
+- [ ] Create `components/about/AboutCell.tsx` — individual cell: icon, label, paragraph
+- [ ] Create `components/about/CaseStudiesPanel.tsx` — full width Case Studies container and header
+- [ ] Create `components/about/CaseStudyCard.tsx` — individual Case Study card component
+- [ ] Create `components/about/FooterPanel.tsx` — the new glass footer
+- [ ] Fetch `about` singleton and `case_studies` from Directus (`lib/content.ts`), static fallback if fails
+- [ ] Add icon set — use `lucide-react` (already installable, matches style) or inline SVGs
+- [ ] Layout: `max-w-[55vw]` container for AboutPanel, full width for CaseStudies and Footer
+- [ ] Remove blur-out scroll animations on sections — replace with simple entrance animation for the panels
+- [ ] Test: globe visible on right on desktop, panels stack vertically on mobile
+- [ ] Update gemini.md changelog on completion
+
+### Dependencies
+- `lucide-react` for icons: `npm install lucide-react`
+- Directus `about` singleton already configured (Phase 9)
+
+---
+
+
 
 **Goal**: Below the dashboard, the page transitions to content. Work and About sections occupy the left-to-center zone of the viewport. The right side stays open for the globe as it continues its scroll journey.
 
@@ -1075,7 +1329,7 @@ Use `InfiniteScroll` from ReactBits (https://reactbits.dev/components/infinite-s
 - Case studies are the product. Write them well.
 - The galaxy theme is load-bearing for the brand. Don't simplify it out.
 - Built by Aldrin Roxas, Pasig City, PH — solo operator, automation architect.
-- Uptime monitoring: **Glance** (not Uptime Kuma) at `192.168.100.144:3001`
+- Uptime monitoring: **Uptime Kuma** at `192.168.100.144:3001` (replaced Glance)
 - Directus collections: `about`, `blog_posts`, `case_studies`, `content_ideas`, `social_posts`, `ai_prompts`, `github`
 - **Schema Notes**:
   - `about`: bio, philosophy, current_focus, whoiam_section (all markdown)
