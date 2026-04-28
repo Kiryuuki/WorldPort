@@ -7,7 +7,9 @@ import { AuroraCanvas } from "@/components/canvas/AuroraCanvas";
 import { DustCanvas } from "@/components/canvas/DustCanvas";
 import { VignetteCanvas } from "@/components/canvas/VignetteCanvas";
 import { CursorCanvas } from "@/components/canvas/CursorCanvas";
-import { GlassNav } from "@/components/nav/GlassNav";
+import { CardNav } from "@/components/nav/CardNav";
+import { WordmarkLogo } from "@/components/nav/WordmarkLogo";
+import { ContactDrawer } from "@/components/dashboard/ContactDrawer";
 import { LenisProvider } from "@/components/LenisProvider";
 import { Providers } from "@/components/Providers";
 
@@ -50,7 +52,9 @@ export default function RootLayout({
           {/* UI & Overlays */}
           <VignetteCanvas />
           <CursorCanvas />
-          <GlassNav />
+          <WordmarkLogo />
+          <CardNav />
+          <ContactDrawer />
 
           <main className="relative z-10 min-h-screen">
             {children}

@@ -3,6 +3,7 @@
 // React Query + any future client providers
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, ReactNode } from 'react';
+import { UIProvider } from './UIContext';
 
 export function Providers({ children }: { children: ReactNode }) {
   // Each browser session gets its own QueryClient (no cross-request sharing)
@@ -17,7 +18,9 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <UIProvider>
+        {children}
+      </UIProvider>
     </QueryClientProvider>
   );
 }

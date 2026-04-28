@@ -12,14 +12,14 @@ export type CaseStudy = {
   date_created: string;
 };
 
-export type BlogPost = {
+export type About = {
   id: string;
-  slug: string;
-  title: string;
   date_created: string;
-  excerpt: string;
-  content: string; // Renamed from body
-  read_time: string; // From directus.md
+  bio: string;
+  philosophy: string;
+  current_focus: string;
+  whoiam_section: string;
+  stack?: string;
 };
 
 export async function getCaseStudies() {
@@ -48,56 +48,12 @@ export async function getCaseStudy(slug: string) {
         limit: 1,
       })
     );
-    return items[0] as CaseStudy | undefined;
+    return items[0] as unknown as CaseStudy | undefined;
   } catch (e) {
     console.error("Directus CaseStudy Error:", e);
     return undefined;
   }
 }
-
-export async function getPosts() {
-  if (typeof window !== 'undefined') return [];
-  if (!directus.url || directus.url.toString().includes('fallback.invalid')) return [];
-  try {
-    return await directus.request(
-      readItems('blog_posts', {
-        filter: { status: { _eq: 'published' } },
-        sort: ['-date_created'],
-        fields: ['id', 'title', 'slug', 'date_created', 'excerpt', 'read_time'],
-      })
-    );
-  } catch (e) {
-    console.error("Directus Posts Error:", e);
-    return [];
-  }
-}
-
-export async function getPost(slug: string) {
-  if (typeof window !== 'undefined') return undefined;
-  if (!directus.url || directus.url.toString().includes('fallback.invalid')) return undefined;
-  try {
-    const items = await directus.request(
-      readItems('blog_posts', {
-        filter: { slug: { _eq: slug }, status: { _eq: 'published' } },
-        limit: 1,
-      })
-    );
-    return items[0] as unknown as BlogPost | undefined;
-  } catch (e) {
-    console.error("Directus Post Error:", e);
-    return undefined;
-  }
-}
-
-export type About = {
-  id: string;
-  date_created: string;
-  bio: string;
-  philosophy: string;
-  current_focus: string;
-  whoiam_section: string;
-  stack?: string;
-};
 
 export async function getAbout() {
   if (typeof window !== 'undefined') return null;

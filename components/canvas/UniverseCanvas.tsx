@@ -90,7 +90,7 @@ export const UniverseCanvas: React.FC<{ projects: Project[] }> = ({ projects }) 
       const intersects = raycaster.intersectObjects(scene.children, true);
       const planet = intersects.find(obj => obj.object.userData.slug);
       if (planet) {
-        router.push(`/work/${planet.object.userData.slug}`);
+        router.push(`/case-studies/${planet.object.userData.slug}`);
       }
     };
 
@@ -129,8 +129,8 @@ export const UniverseCanvas: React.FC<{ projects: Project[] }> = ({ projects }) 
   return (
     <div ref={containerRef} className="w-full h-full relative cursor-pointer">
       {selectedProject && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none glass px-6 py-3 rounded-full">
-          <span className="text-sm font-bold tracking-widest uppercase">{selectedProject}</span>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none glass-panel px-6 py-3 rounded-full border-accent/20" style={{ fontFamily: 'var(--font-mono)' }}>
+          <span className="text-accent-label text-accent">{selectedProject}</span>
         </div>
       )}
     </div>

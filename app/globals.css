@@ -1,80 +1,232 @@
+/* app/globals.css — WORLDPORT DESIGN SYSTEM */
+
+/* ── Z-Index Stack ─────────────────────────────────────────────────────────
+   CRITICAL: VignetteCanvas must stay at z:4. It was previously z:100
+   which buried all UI panels, drawers, and the footer.
+
+   0     StarCanvas (canvas element)
+   2     EarthCanvas (canvas element)
+   3     AuroraCanvas (canvas element)
+   4     VignetteCanvas (fixed div, pointer-events:none) ← MUST stay ≤ 5
+   10    Main content sections
+   20    Glass panels (Mission Control, Case Studies)
+   30    CardNav
+   50    Footer
+   200   Drawers
+   9999  CursorCanvas
+──────────────────────────────────────────────────────────────────────────── */
+
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
 
 @theme {
-  --color-background: #010611;
-  --color-foreground: #ffffff;
-  --color-secondary: rgba(255, 255, 255, 0.55);
-  --color-accent: rgba(100, 140, 255, 0.7);
-  
-  --radius-button: 100px;
-  --radius-card: 20px;
-  --radius-nav: 15px;
-
-  --font-display: "Bandeins Strange", "Space Grotesk", sans-serif;
-  --font-sans: var(--font-space-grotesk), "Space Grotesk", sans-serif;
-  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+  --color-accent: var(--accent);
+  --color-ok: var(--ok);
+  --color-err: var(--err);
+  --color-wrn: var(--wrn);
+  --color-secondary: var(--text-secondary);
 }
 
+@layer base {
+  :root {
+    /* ── Base ─────────────────────────────────────── */
+    --bg:              #010611;
+    --bg-panel:        rgba(8, 10, 20, 0.82);
+    --bg-panel-deep:   rgba(4, 6, 14, 0.92);
+    --bg-row:          transparent;
+    --bg-row-hover:    rgba(255, 255, 255, 0.03);
+    --bg-tag:          rgba(255, 255, 255, 0.06);
+
+    /* ── Borders ──────────────────────────────────── */
+    --border-panel:    rgba(255, 255, 255, 0.07);
+    --border-row:      rgba(255, 255, 255, 0.05);
+    --border-tag:      rgba(255, 255, 255, 0.10);
+    --border-drawer:   rgba(255, 255, 255, 0.08);
+
+    /* ── Text ─────────────────────────────────────── */
+    --text-primary:    rgba(255, 255, 255, 0.92);
+    --text-secondary:  rgba(255, 255, 255, 0.55);
+    --text-muted:      rgba(255, 255, 255, 0.30);
+    --text-label:      rgba(255, 255, 255, 0.40);
+
+    /* ── Accent ───────────────────────────────────── */
+    --accent:          #6480ff;
+    --accent-dim:      rgba(100, 128, 255, 0.15);
+
+    /* ── Status ───────────────────────────────────── */
+    --ok:              #00e676;
+    --ok-dim:          rgba(0, 230, 118, 0.15);
+    --err:             #ff3355;
+    --err-dim:         rgba(255, 51, 85, 0.15);
+    --wrn:             #ffaa00;
+    --wrn-dim:         rgba(255, 170, 0, 0.15);
+
+    /* ── Typography ───────────────────────────────── */
+    --font-mono:       var(--font-jetbrains-mono), 'Courier New', monospace;
+    --font-sans:       var(--font-space-grotesk), system-ui, sans-serif;
+    --font-hero:       'Bandeins Strange', var(--font-space-grotesk), sans-serif;
+
+    /* ── Scale ────────────────────────────────────── */
+    --text-label:      9px;
+    --text-tag:        9px;
+    --text-meta:       10px;
+    --text-body:       12px;
+    --text-body-lg:    13px;
+    --text-subhead:    15px;
+
+    /* ── Spacing ──────────────────────────────────── */
+    --panel-pad-h:     16px;
+    --panel-pad-v:     14px;
+    --row-pad-h:       14px;
+    --row-pad-v:       10px;
+
+    /* ── Shape ────────────────────────────────────── */
+    --r-panel:         16px;
+    --r-card:          12px;
+    --r-tag:           4px;
+    --r-btn:           100px;
+    --panel-w:         320px;
+    --drawer-w:        380px;
+
+    /* ── Glass Blur ───────────────────────────────── */
+    --blur-panel:      blur(24px) saturate(1.4);
+    --blur-drawer:     blur(32px) saturate(1.5);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  
+  html { 
+    background: var(--bg);
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    background: var(--bg);
+    cursor: none;
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  /* ── Typography utilities ─────────────────────────── */
+  .text-label {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+    color: var(--text-label);
+  }
+  .text-accent-label {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+    color: var(--accent);
+  }
+  .text-body { font-size: 12px; line-height: 1.6; font-family: var(--font-mono); }
+  .text-body-lg { font-size: 13px; line-height: 1.65; font-family: var(--font-mono); }
+  .text-meta { font-size: 10px; letter-spacing: 0.10em; color: var(--text-muted); }
+
+  /* ── Glass panel ──────────────────────────────────── */
+  .glass-panel {
+    background: var(--bg-panel);
+    backdrop-filter: var(--blur-panel);
+    -webkit-backdrop-filter: var(--blur-panel);
+    border: 1px solid var(--border-panel);
+    border-radius: var(--r-panel);
+  }
+  .glass-drawer {
+    background: var(--bg-panel-deep);
+    backdrop-filter: var(--blur-drawer);
+    -webkit-backdrop-filter: var(--blur-drawer);
+    border-left: 1px solid var(--border-drawer);
+  }
+
+  /* ── Panel row ────────────────────────────────────── */
+  .panel-row {
+    padding: var(--row-pad-v) var(--row-pad-h);
+    border-bottom: 1px solid var(--border-row);
+    transition: border-left-color 0.15s, background 0.15s;
+  }
+  .panel-row:hover { 
+    background: var(--bg-row-hover);
+    border-left-color: var(--accent) !important;
+  }
+  .panel-row:last-child { border-bottom: none; }
+  .panel-row:hover .card-arrow { opacity: 1; }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(100, 128, 255, 0.5);
+  }
+  .panel-row:focus-visible { 
+    box-shadow: 0 0 0 2px rgba(100, 128, 255, 0.5); 
+    outline: none; 
+  }
+
+  /* ── Tag / Badge ──────────────────────────────────── */
+  .tag {
+    display: inline-block;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+    padding: 2px 6px;
+    border-radius: var(--r-tag);
+    background: var(--bg-tag);
+    border: 1px solid var(--border-tag);
+    color: var(--text-muted);
+  }
+
+  /* ── Status dot ───────────────────────────────────── */
+  .status-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-dot.ok  { background: var(--ok);  box-shadow: 0 0 6px var(--ok); }
+  .status-dot.err { background: var(--err); box-shadow: 0 0 6px var(--err); }
+  .status-dot.wrn { background: var(--wrn); box-shadow: 0 0 6px var(--wrn); }
+
+  /* ── Panel header ─────────────────────────────────── */
+  .panel-header {
+    padding: var(--panel-pad-v) var(--panel-pad-h);
+    border-bottom: 1px solid var(--border-panel);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* ── Scrollbar ────────────────────────────────────── */
+  .panel-scroll { overflow-y: auto; }
+  .panel-scroll::-webkit-scrollbar { width: 3px; }
+  .panel-scroll::-webkit-scrollbar-track { background: transparent; }
+  .panel-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.12);
+    border-radius: 2px;
+  }
+
+  /* ── Glass Shorthand (Legacy compatibility) ────────── */
+  .glass {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes scrollPulse {
+  0%   { transform: scaleY(0); transform-origin: top;    opacity: 0; }
+  40%  { transform: scaleY(1); transform-origin: top;    opacity: 1; }
+  80%  { transform: scaleY(1); transform-origin: bottom; opacity: 0; }
+  100% { transform: scaleY(0); transform-origin: bottom; opacity: 0; }
+}
+
+/* Custom fonts from layout.tsx */
 :root {
-  --background: #010611;
-  --foreground: #ffffff;
-  --secondary: rgba(255, 255, 255, 0.55);
-  --accent: rgba(100, 140, 255, 0.7);
-  
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-  --glass-blur: blur(24px) saturate(1.5);
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Glassmorphism Utility */
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: var(--glass-border);
-}
-
-/* Hide native cursor globally as per instructions */
-* {
-  cursor: none !important;
-}
-
-/* Transitions */
-a, button {
-  transition: all 0.3s ease;
-  cursor: none !important;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--background);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  --font-space-grotesk: var(--font-space-grotesk);
+  --font-jetbrains-mono: var(--font-jetbrains-mono);
 }

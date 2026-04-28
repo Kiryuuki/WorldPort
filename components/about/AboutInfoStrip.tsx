@@ -21,16 +21,17 @@ export const AboutInfoStrip: React.FC<AboutInfoStripProps> = ({ cards }) => {
     <div className="w-full">
       <div
         className="w-full mb-4"
-        style={{ height: "1px", background: "rgba(255,255,255,0.06)" }}
+        style={{ height: "1px", background: "var(--border-row)" }}
       />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-start">
         {cards.map((card) => (
-          <AboutInfoCard
-            key={card.label}
-            icon={card.icon}
-            label={card.label}
-            content={card.content}
-          />
+          <div key={card.label} className="h-full">
+            <AboutInfoCard
+              icon={card.icon}
+              label={card.label}
+              content={card.content}
+            />
+          </div>
         ))}
       </div>
     </div>

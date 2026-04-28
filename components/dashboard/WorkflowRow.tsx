@@ -29,8 +29,7 @@ export const WorkflowRow: React.FC<WorkflowRowProps> = ({ execution, onClick, ac
   const isError   = ['error', 'failed'].includes(s);
   const isRunning = ['running', 'waiting'].includes(s);
 
-  const borderColor = isSuccess ? '#00ff88' : isError ? '#ff3355' : '#ffaa00';
-  const statusColor = isSuccess ? '#00ff88' : isError ? '#ff3355' : '#ffaa00';
+  const borderColor = isSuccess ? 'var(--ok)' : isError ? 'var(--err)' : 'var(--wrn)';
   const statusLabel = isSuccess ? 'SUCCESS' : isError ? 'ERROR' : isRunning ? 'RUNNING' : s.toUpperCase();
 
   const timeAgo = execution.started_at
@@ -48,32 +47,17 @@ export const WorkflowRow: React.FC<WorkflowRowProps> = ({ execution, onClick, ac
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer transition-all duration-150"
+      className={`panel-row group cursor-pointer ${active ? 'bg-white/[0.06]' : ''}`}
       style={{
         borderLeft: `2px solid ${borderColor}`,
-        backgroundColor: active ? 'rgba(255,255,255,0.06)' : 'transparent',
-        padding: '10px 16px 10px 14px',
-        marginBottom: '2px',
-      }}
-      onMouseEnter={e => {
-        if (!active) (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(255,255,255,0.03)';
-      }}
-      onMouseLeave={e => {
-        if (!active) (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent';
       }}
     >
       {/* Workflow name */}
       <div className="flex items-start justify-between gap-3 mb-2">
-        <span
-          className="text-[13px] font-semibold leading-tight text-white group-hover:text-white transition-colors"
-          style={{ fontFamily: 'inherit', letterSpacing: '0.01em' }}
-        >
+        <span className="text-body font-semibold text-white group-hover:text-accent transition-colors uppercase">
           {execution.workflow_name || 'Unknown Workflow'}
         </span>
-        <span
-          className="text-[10px] shrink-0 mt-0.5"
-          style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'inherit', letterSpacing: '0.08em' }}
-        >
+        <span className="text-meta uppercase text-muted">
           {timeAgo}
         </span>
       </div>
@@ -85,31 +69,25 @@ export const WorkflowRow: React.FC<WorkflowRowProps> = ({ execution, onClick, ac
           {isError   && <XCircle      size={11} style={{ color: borderColor }} />}
           {isRunning && <Loader2      size={11} style={{ color: borderColor }} className="animate-spin" />}
           <span
-            className="text-[10px] font-bold tracking-widest uppercase"
-            style={{ color: statusColor }}
+            className="text-[9px] font-bold tracking-[0.15em] uppercase"
+            style={{ color: borderColor }}
           >
             {statusLabel}
           </span>
         </div>
 
-        <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '10px' }}>·</span>
+        <span className="text-muted/20 text-[10px]">·</span>
 
-        <span
-          className="text-[10px] uppercase tracking-wider"
-          style={{ color: 'rgba(255,255,255,0.35)' }}
-        >
-          <span style={{ color: 'rgba(255,255,255,0.2)' }}>DUR </span>
+        <span className="text-meta uppercase">
+          <span className="opacity-40">DUR </span>
           {durLabel}
         </span>
 
         {execution.node_count != null && (
           <>
-            <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '10px' }}>·</span>
-            <span
-              className="text-[10px] uppercase tracking-wider"
-              style={{ color: 'rgba(255,255,255,0.35)' }}
-            >
-              <span style={{ color: 'rgba(255,255,255,0.2)' }}>NODES </span>
+            <span className="text-muted/20 text-[10px]">·</span>
+            <span className="text-meta uppercase">
+              <span className="opacity-40">NODES </span>
               {execution.node_count}
             </span>
           </>

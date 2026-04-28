@@ -1,14 +1,38 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Briefcase, Search, Play, GraduationCap, ArrowUpRight } from "lucide-react";
 import { CaseStudyCard } from "./CaseStudyCard";
 import { CaseStudy } from "@/lib/content";
 import Link from "next/link";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 interface CaseStudiesPanelProps {
   caseStudies: CaseStudy[];
 }
 
 export const CaseStudiesPanel: React.FC<CaseStudiesPanelProps> = ({ caseStudies }) => {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!panelRef.current) return;
+
+    gsap.fromTo(panelRef.current,
+      { y: 40, opacity: 0 },
+      { 
+        y: 0, 
+        opacity: 1, 
+        duration: 0.8, 
+        ease: 'power3.out',
+        scrollTrigger: { 
+          trigger: panelRef.current, 
+          start: 'top 85%', 
+          once: true 
+        } 
+      }
+    );
+  }, []);
   const getIcon = (title: string) => {
     const t = title.toLowerCase();
     if (t.includes("portfolio") || t.includes("enterprise")) return Briefcase;
@@ -46,38 +70,36 @@ export const CaseStudiesPanel: React.FC<CaseStudiesPanelProps> = ({ caseStudies 
 
   return (
     <div
+      ref={panelRef}
       data-lenis-prevent
-      className="flex flex-col overflow-hidden"
+      className="glass-panel flex flex-col overflow-hidden"
       style={{
         width: "100%",
         height: "55vh",
-        fontFamily: "'JetBrains Mono', monospace",
-        background: "rgba(255,255,255,0.02)",
-        backdropFilter: "blur(24px) saturate(1.4)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: "16px",
+        fontFamily: "var(--font-mono)",
+        background: "rgba(8, 10, 20, 0.88)",
       }}
     >
       {/* Header */}
-      <div className="p-5 border-b border-white/5 flex-shrink-0">
+      <div className="panel-header">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[10px] tracking-[0.15em] font-bold text-white/40 uppercase">
+          <span className="text-accent-label">
             // 04 // CASE_STUDIES
           </span>
-          <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_6px_#648cff]" />
-            <span className="text-[9px] tracking-[0.15em] font-bold text-accent uppercase">
+          <div className="flex items-center gap-2">
+            <div className="status-dot ok shadow-[0_0_6px_var(--accent)]" style={{ background: 'var(--accent)' }} />
+            <span className="text-accent-label" style={{ color: 'var(--accent)' }}>
               STABLE
             </span>
           </div>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-white/30 uppercase tracking-widest">
-            TOTAL <span className="text-white/70">{displayStudies.length}</span>
+          <span className="text-meta opacity-60">
+            TOTAL <span className="text-white">{displayStudies.length}</span>
           </span>
           <Link
-            href="/work"
-            className="text-[9px] font-bold text-accent uppercase tracking-widest flex items-center gap-1 hover:opacity-70 transition-opacity"
+            href="/case-studies"
+            className="text-accent-label text-accent flex items-center gap-1 hover:opacity-70 transition-opacity"
           >
             VIEW_ALL <ArrowUpRight className="w-3 h-3" />
           </Link>
@@ -85,9 +107,19 @@ export const CaseStudiesPanel: React.FC<CaseStudiesPanelProps> = ({ caseStudies 
       </div>
 
       {/* List */}
-      <div className="flex-1 flex flex-row overflow-x-auto scrollbar-hide">
+      <div 
+        className="flex-1 grid grid-cols-[repeat(4,minmax(280px,1fr))] overflow-x-auto scrollbar-hide"
+        style={{ 
+          scrollbarWidth: 'none', 
+          msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
+        <style dangerouslySetInnerHTML={{ __html: `
+          .scrollbar-hide::-webkit-scrollbar { display: none; }
+        `}} />
         {displayStudies.map((study: any) => (
-          <div key={study.slug} className="min-w-[350px] border-r border-white/5 h-full">
+          <div key={study.slug} className="border-r border-white/5 h-full">
             <CaseStudyCard
               icon={getIcon(study.title)}
               title={study.title}

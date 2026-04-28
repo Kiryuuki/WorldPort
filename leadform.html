@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work With Me — Aldrin Roxas</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap');
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0d0d0d;
+            --surface: #141414;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.18);
+            --text: #f0ede8;
+            --muted: #888;
+            --accent: #c8f542;
+            --accent-dim: rgba(200, 245, 66, 0.12);
+            --danger: #ff5f5f;
+            --radius: 6px;
+            --mono: 'DM Mono', monospace;
+            --serif: 'Instrument Serif', Georgia, serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 14px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 1.5rem;
+            line-height: 1.6;
+        }
+
+        .wrap {
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .header {
+            margin-bottom: 3rem;
+        }
+
+        .label-tag {
+            display: inline-block;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            padding: 3px 10px;
+            border-radius: 100px;
+            margin-bottom: 1.25rem;
+        }
+
+        h1 {
+            font-family: var(--serif);
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 400;
+            line-height: 1.15;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+        }
+
+        h1 em {
+            font-style: italic;
+            color: var(--accent);
+        }
+
+        .subhead {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .row-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        label .req {
+            color: var(--accent);
+            margin-left: 2px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 14px;
+            padding: 10px 14px;
+            transition: border-color 0.15s, background 0.15s;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--accent);
+            background: rgba(200, 245, 66, 0.04);
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+            cursor: pointer;
+        }
+
+        select option {
+            background: #1a1a1a;
+            color: var(--text);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            line-height: 1.6;
+        }
+
+        /* score preview strip */
+        .score-strip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 12px;
+            color: var(--muted);
+            transition: all 0.2s;
+        }
+
+        .score-strip .score-num {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text);
+            min-width: 28px;
+            transition: color 0.2s;
+        }
+
+        .score-strip .score-bar {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .score-strip .score-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 2px;
+            background: var(--muted);
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+
+        .score-strip .score-tier {
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            transition: all 0.2s;
+        }
+
+        .tier-hot {
+            color: var(--accent) !important;
+            border-color: var(--accent) !important;
+        }
+
+        .tier-warm {
+            color: #f5a623 !important;
+            border-color: #f5a623 !important;
+        }
+
+        .tier-cold {
+            color: var(--muted);
+            border-color: var(--border);
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 0.25rem 0;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 13px 20px;
+            background: var(--accent);
+            color: #0d0d0d;
+            border: none;
+            border-radius: var(--radius);
+            font-family: var(--mono);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: opacity 0.15s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .submit-btn:hover {
+            opacity: 0.88;
+        }
+
+        .submit-btn:active {
+            transform: scale(0.985);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .submit-btn .arrow {
+            font-size: 16px;
+            transition: transform 0.15s;
+        }
+
+        .submit-btn:hover .arrow {
+            transform: translateX(3px);
+        }
+
+        .status-msg {
+            display: none;
+            padding: 12px 14px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .status-msg.success {
+            display: block;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+        }
+
+        .status-msg.error {
+            display: block;
+            background: rgba(255, 95, 95, 0.08);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .footer-note {
+            margin-top: 1.5rem;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.2);
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 480px) {
+            .row-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="header">
+            <span class="label-tag">Open for projects</span>
+            <h1>Let's build something <em>useful.</em></h1>
+            <p class="subhead">Tell me about your project. I'll get back to you within 24 hours with a scope and rough
+                estimate.</p>
+        </div>
+
+        <form id="leadForm" class="form-grid" novalidate>
+
+            <div class="row-2">
+                <div class="field">
+                    <label>Name <span class="req">*</span></label>
+                    <input type="text" name="name" id="name" placeholder="Your name" required autocomplete="name">
+                </div>
+                <div class="field">
+                    <label>Email <span class="req">*</span></label>
+                    <input type="email" name="email" id="email" placeholder="you@company.com" required
+                        autocomplete="email">
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Company / Organization</label>
+                <input type="text" name="company" id="company" placeholder="Where do you work?"
+                    autocomplete="organization">
+            </div>
+
+            <div class="row-2">
+                <div class="field">
+                    <label>Budget <span class="req">*</span></label>
+                    <select name="budget" id="budget" required>
+                        <option value="" disabled selected>Select range</option>
+                        <option value="under-500">Under $500</option>
+                        <option value="500-2k">$500 – $2,000</option>
+                        <option value="2k-5k">$2,000 – $5,000</option>
+                        <option value="5k-plus">$5,000+</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Timeline <span class="req">*</span></label>
+                    <select name="timeline" id="timeline" required>
+                        <option value="" disabled selected>Select timeline</option>
+                        <option value="asap">ASAP</option>
+                        <option value="1-3-months">1–3 months</option>
+                        <option value="3-6-months">3–6 months</option>
+                        <option value="exploring">Just exploring</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Project type <span class="req">*</span></label>
+                <select name="project_type" id="project_type" required>
+                    <option value="" disabled selected>What are you looking for?</option>
+                    <option value="one-time">One-time build</option>
+                    <option value="retainer">Ongoing retainer</option>
+                    <option value="not-sure">Not sure yet</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Tell me about your project <span class="req">*</span></label>
+                <textarea name="message" id="message"
+                    placeholder="What do you want to automate? What tools are you using? What's the pain point?"
+                    required></textarea>
+            </div>
+
+            <!-- live score strip -->
+            <div class="score-strip" id="scoreStrip">
+                <span class="score-num" id="scoreNum">0</span>
+                <span style="color:rgba(255,255,255,0.15);font-size:12px;">/11</span>
+                <div class="score-bar">
+                    <div class="score-fill" id="scoreFill"></div>
+                </div>
+                <span class="score-tier tier-cold" id="scoreTier">cold</span>
+            </div>
+
+            <hr class="divider">
+
+            <div id="statusMsg" class="status-msg"></div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">
+                Send inquiry <span class="arrow">→</span>
+            </button>
+
+            <p class="footer-note">
+                No spam. No unsolicited follow-ups. Just a real reply about your project.
+            </p>
+
+        </form>
+    </div>
+
+    <script>
+        // ── Config ────────────────────────────────────────────────
+        // Replace with your n8n webhook URL
+        const WEBHOOK_URL = 'https://minis-neyn.kiryuuki.space/webhook/lead-intake';
+
+        // ── Scoring (mirrors n8n Code node logic) ────────────────
+        const budgetMap = { 'under-500': 0, '500-2k': 1, '2k-5k': 2, '5k-plus': 3 };
+        const timelineMap = { 'exploring': 0, '3-6-months': 1, '1-3-months': 2, 'asap': 3 };
+        const typeMap = { 'not-sure': 0, 'one-time': 1, 'retainer': 2 };
+        const keywords = ['urgent', 'asap', 'automat', 'n8n', 'integration', 'crm', 'scraping', 'api', 'workflow', 'retainer'];
+
+        function calcScore() {
+            const budget = document.getElementById('budget').value;
+            const tl = document.getElementById('timeline').value;
+            const pt = document.getElementById('project_type').value;
+            const msg = document.getElementById('message').value.toLowerCase();
+
+            let score = 0;
+            score += budgetMap[budget] ?? 0;
+            score += timelineMap[tl] ?? 0;
+            score += typeMap[pt] ?? 0;
+
+            let kw = 0;
+            for (const k of keywords) { if (msg.includes(k)) kw++; }
+            score += Math.min(kw, 3);
+
+            return score;
+        }
+
+        function updateStrip() {
+            const score = calcScore();
+            const tier = score >= 6 ? 'hot' : score >= 3 ? 'warm' : 'cold';
+            const pct = Math.round((score / 11) * 100);
+
+            const fillColors = { hot: '#c8f542', warm: '#f5a623', cold: '#555' };
+
+            document.getElementById('scoreNum').textContent = score;
+            document.getElementById('scoreFill').style.width = pct + '%';
+            document.getElementById('scoreFill').style.background = fillColors[tier];
+            document.getElementById('scoreNum').style.color = fillColors[tier];
+
+            const tierEl = document.getElementById('scoreTier');
+            tierEl.textContent = tier;
+            tierEl.className = 'score-tier tier-' + tier;
+        }
+
+        // ── Live update ───────────────────────────────────────────
+        ['budget', 'timeline', 'project_type', 'message'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateStrip);
+            document.getElementById(id).addEventListener('change', updateStrip);
+        });
+
+        // ── Submit ────────────────────────────────────────────────
+        document.getElementById('leadForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const btn = document.getElementById('submitBtn');
+            const status = document.getElementById('statusMsg');
+            status.className = 'status-msg';
+            status.style.display = 'none';
+
+            // Basic validation
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            if (!name || !email) {
+                status.textContent = 'Name and email are required.';
+                status.className = 'status-msg error';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = 'Sending<span class="arrow" style="opacity:0.5">...</span>';
+
+            const payload = {
+                name,
+                email,
+                company: document.getElementById('company').value.trim(),
+                budget: document.getElementById('budget').value,
+                timeline: document.getElementById('timeline').value,
+                project_type: document.getElementById('project_type').value,
+                message: document.getElementById('message').value.trim(),
+                source: 'portfolio-form',
+            };
+
+            try {
+                const res = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                status.textContent = "Got it — I'll be in touch within 24 hours.";
+                status.className = 'status-msg success';
+                document.getElementById('leadForm').reset();
+                updateStrip();
+
+            } catch (err) {
+                status.textContent = 'Something went wrong. Email me directly: hello@yourdomain.com';
+                status.className = 'status-msg error';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Send inquiry <span class="arrow">→</span>';
+            }
+        });
+    </script>
+</body>
+
+</html>

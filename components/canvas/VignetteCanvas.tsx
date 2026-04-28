@@ -15,7 +15,7 @@ export const VignetteCanvas: React.FC = () => {
       className="fixed inset-0 w-full h-full pointer-events-none"
       style={{
         background: `linear-gradient(to top, rgba(${color}, ${opacity}) 0%, transparent ${height})`,
-        zIndex: 100,
+        zIndex: 4,
       }}
     />
   );

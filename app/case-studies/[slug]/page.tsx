@@ -35,36 +35,37 @@ export default async function CaseStudyPage({ params }: Props) {
   const readTime = "5 MIN READ"; // Mocked
 
   return (
-    <article className="pt-40 pb-20 px-6">
-      <div className="max-w-3xl mx-auto">
+    <article className="min-h-screen pt-40 pb-20 px-6 flex flex-col items-center" style={{ fontFamily: 'var(--font-mono)' }}>
+      <div className="max-w-4xl w-full p-8 md:p-16 glass-panel rounded-[40px] relative overflow-hidden border-white/10">
         <Link 
-          href="/work" 
-          className="text-xs font-bold tracking-widest uppercase text-white/40 hover:text-accent transition-colors flex items-center gap-2 mb-12"
+          href="/case-studies" 
+          className="text-accent-label text-secondary hover:text-accent transition-colors flex items-center gap-2 mb-12"
         >
-          <span>←</span> Back to Work
+          <span>←</span> BACK_TO_CASE_STUDIES
         </Link>
 
         <header className="space-y-8 mb-20">
           <div className="flex flex-wrap gap-3">
             {stack.map((s: string) => (
-              <span key={s} className="px-3 py-1 glass rounded-full text-[10px] font-bold uppercase tracking-widest text-white/60">
+              <span key={s} className="tag">
                 {s}
               </span>
             ))}
           </div>
-          <h1 className="text-6xl font-bold tracking-tighter leading-tight">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tighter leading-tight text-white uppercase">
             {post.title}
           </h1>
-          <p className="text-2xl text-white/70 italic font-medium border-l-4 border-accent pl-8 py-2">
+          <div className="h-[1px] w-24 bg-accent/50 mb-8" />
+          <p className="text-xl md:text-2xl text-secondary italic font-medium leading-relaxed">
             "{post.hook}"
           </p>
         </header>
 
         <div className="prose prose-invert prose-lg max-w-none 
-          prose-headings:font-bold prose-headings:tracking-tight
-          prose-p:text-white/70 prose-p:leading-relaxed
+          prose-headings:text-white prose-headings:font-bold prose-headings:tracking-tight prose-headings:uppercase
+          prose-p:text-secondary prose-p:leading-relaxed prose-p:text-body-lg
           prose-strong:text-white prose-strong:font-bold
-          prose-ul:list-disc prose-li:text-white/70
+          prose-ul:list-disc prose-li:text-secondary
           prose-hr:border-white/10
           space-y-12
         ">
@@ -75,17 +76,17 @@ export default async function CaseStudyPage({ params }: Props) {
 
         <footer className="mt-32 pt-12 border-t border-white/10 flex flex-col md:flex-row justify-between gap-8">
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Written By</p>
-            <p className="text-sm font-bold text-white">Aldrin Roxas</p>
+            <p className="text-accent-label opacity-30">WRITTEN_BY</p>
+            <p className="text-sm font-bold text-white uppercase">Aldrin Roxas</p>
           </div>
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Reading Time</p>
-            <p className="text-sm font-bold text-white">{readTime}</p>
+            <p className="text-accent-label opacity-30">READING_TIME</p>
+            <p className="text-sm font-bold text-white uppercase">{readTime}</p>
           </div>
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Share Signal</p>
-            <div className="flex gap-4 text-xs font-bold text-accent">
-              <button className="hover:text-white transition-colors">Copy Link</button>
+            <p className="text-accent-label opacity-30">SHARE_SIGNAL</p>
+            <div className="flex gap-4 text-accent-label text-accent">
+              <button className="hover:text-white transition-colors">COPY_LINK</button>
             </div>
           </div>
         </footer>

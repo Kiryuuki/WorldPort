@@ -22,40 +22,27 @@ export const ServiceRow: React.FC<ServiceRowProps> = ({ service, onClick, active
   const isDown    = service.status === 0;
   const isUnknown = service.status === null;
 
-  const borderColor = isUp ? '#00ff88' : isDown ? '#ff3355' : '#ffaa00';
-  const statusColor = isUp ? '#00ff88' : isDown ? '#ff3355' : '#ffaa00';
+  const borderColor = isUp ? 'var(--ok)' : isDown ? 'var(--err)' : 'var(--wrn)';
   const statusLabel = isUp ? 'OPERATIONAL' : isDown ? 'OUTAGE' : 'UNKNOWN';
   const StatusIcon  = isUp ? CheckCircle2 : isDown ? XCircle : HelpCircle;
 
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer transition-all duration-150"
+      className={`panel-row group cursor-pointer ${active ? 'bg-white/[0.06]' : ''}`}
       style={{
         borderLeft: `2px solid ${borderColor}`,
-        backgroundColor: active ? 'rgba(255,255,255,0.06)' : 'transparent',
-        padding: '10px 16px 10px 14px',
-        marginBottom: '2px',
-      }}
-      onMouseEnter={e => {
-        if (!active) (e.currentTarget as HTMLDivElement).style.backgroundColor = 'rgba(255,255,255,0.03)';
-      }}
-      onMouseLeave={e => {
-        if (!active) (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent';
       }}
     >
       {/* Service name + status pulse */}
       <div className="flex items-start justify-between gap-3 mb-2">
-        <span
-          className="text-[13px] font-semibold leading-tight text-white group-hover:text-white transition-colors uppercase"
-          style={{ fontFamily: 'inherit', letterSpacing: '0.01em' }}
-        >
+        <span className="text-body font-semibold text-white group-hover:text-accent transition-colors uppercase">
           {service.name}
         </span>
         <div className="flex items-center gap-2 shrink-0 mt-0.5">
           <span
-            className="text-[10px] font-bold tracking-widest uppercase"
-            style={{ color: statusColor }}
+            className="text-[9px] font-bold tracking-[0.15em] uppercase"
+            style={{ color: borderColor }}
           >
             {statusLabel}
           </span>
@@ -73,20 +60,14 @@ export const ServiceRow: React.FC<ServiceRowProps> = ({ service, onClick, active
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5">
           <StatusIcon size={11} style={{ color: borderColor }} />
-          <span
-            className="text-[10px] uppercase tracking-wider"
-            style={{ color: 'rgba(255,255,255,0.35)' }}
-          >
+          <span className="text-meta uppercase">
             {service.type || 'HTTP'}
           </span>
         </div>
 
-        <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: '10px' }}>·</span>
+        <span className="text-muted/20 text-[10px]">·</span>
 
-        <span
-          className="text-[10px] uppercase tracking-widest"
-          style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px' }}
-        >
+        <span className="text-accent-label !text-[8px]">
           NODE_STABLE
         </span>
       </div>
