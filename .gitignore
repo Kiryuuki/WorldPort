@@ -42,7 +42,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# docker
-Dockerfile
-docker-compose.yml
-.dockerignore
+# documentation
+CLAUDE.md
+AGENTS.md
+gemini.md
+directus.md
+leadform.html
