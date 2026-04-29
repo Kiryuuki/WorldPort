@@ -32,7 +32,7 @@ export const FooterPanel: React.FC = () => {
         </span>
         <div className="flex items-center gap-6">
           <div className="group flex items-center gap-2" title="n8n">
-            <Zap className="w-4 h-4 text-white/40 group-hover:text-accent transition-colors" />
+            <img src="/icons/n8n.svg" alt="n8n" className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
             <span className="text-meta group-hover:text-white/60 transition-colors hidden md:block">n8n</span>
           </div>
           <div className="group flex items-center gap-2" title="Supabase">
@@ -44,7 +44,7 @@ export const FooterPanel: React.FC = () => {
             <span className="text-meta group-hover:text-white/60 transition-colors hidden md:block">Claude</span>
           </div>
           <div className="group flex items-center gap-2" title="Docker">
-            <Box className="w-4 h-4 text-white/40 group-hover:text-[#2496ED] transition-colors" />
+            <img src="/icons/docker.png" alt="Docker" className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
             <span className="text-meta group-hover:text-white/60 transition-colors hidden md:block">Docker</span>
           </div>
         </div>
