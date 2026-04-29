@@ -9,7 +9,7 @@ import { UniverseCanvas } from "./canvas/UniverseCanvas";
 interface Post {
   slug: string;
   title: string;
-  stack: string[];
+  stack: string;
   hook: string;
   readTime: string;
 }
@@ -85,9 +85,9 @@ export const WorkList: React.FC<{ posts: Post[] }> = ({ posts }) => {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex flex-wrap gap-2">
-                      {post.stack.map((s) => (
-                        <span key={s} className="tag">
-                          {s}
+                      {post.stack.split(",").map((s) => (
+                        <span key={s.trim()} className="tag">
+                          {s.trim()}
                         </span>
                       ))}
                     </div>

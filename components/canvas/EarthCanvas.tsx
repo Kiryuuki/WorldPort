@@ -265,8 +265,10 @@ export const EarthCanvas: React.FC = () => {
           duration: 1.2,
           ease: "power3.inOut",
           onComplete: () => {
-            s.controls.minDistance = 100;
-            s.controls.maxDistance = 5000;
+            if (s.controls) {
+              s.controls.minDistance = 100;
+              s.controls.maxDistance = 5000;
+            }
             
             const tl = gsap.timeline({ 
               scrollTrigger: { 

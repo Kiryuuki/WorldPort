@@ -9,7 +9,7 @@ export default async function WorkPage() {
   const posts = caseStudies.map((cs: any) => ({
     slug: cs.slug,
     title: cs.title,
-    stack: cs.stack || [],
+    stack: cs.stack || "",
     hook: cs.hook,
     readTime: "5 MIN READ", // Mocked for now, can be computed from body length later
   }));
