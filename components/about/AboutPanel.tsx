@@ -6,6 +6,7 @@ import { Globe, Lightbulb, Layers, Crosshair } from "lucide-react";
 import { AboutInfoStrip } from "./AboutInfoStrip";
 import { useUI } from "@/components/UIContext";
 import { ArrowRight } from "lucide-react";
+import { About } from "@/lib/content";
 
 interface AboutPanelProps {
   about: About | null;
