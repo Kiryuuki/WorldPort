@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three-stdlib";
 import gsap from "gsap";
-import { useRouter } from "next/navigation";
+import { useUI } from "@/components/UIContext";
 
 interface Project {
   slug: string;
@@ -13,7 +13,7 @@ interface Project {
 
 export const UniverseCanvas: React.FC<{ projects: Project[] }> = ({ projects }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+  const { setActiveCaseStudySlug } = useUI();
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export const UniverseCanvas: React.FC<{ projects: Project[] }> = ({ projects }) 
       const intersects = raycaster.intersectObjects(scene.children, true);
       const planet = intersects.find(obj => obj.object.userData.slug);
       if (planet) {
-        router.push(`/case-studies/${planet.object.userData.slug}`);
+        setActiveCaseStudySlug(planet.object.userData.slug);
       }
     };
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { LucideIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useUI } from "@/components/UIContext";
 
 interface CaseStudyCardProps {
   icon: LucideIcon;
@@ -19,15 +19,15 @@ export const CaseStudyCard: React.FC<CaseStudyCardProps> = ({
   slug,
   isProduction = true,
 }) => {
-  const router = useRouter();
+  const { setActiveCaseStudySlug } = useUI();
 
   return (
     <div 
       className="panel-row group h-full flex flex-col cursor-pointer outline-none"
       role="button"
       tabIndex={0}
-      onClick={() => router.push(`/case-studies/${slug}`)}
-      onKeyDown={(e) => e.key === 'Enter' && router.push(`/case-studies/${slug}`)}
+      onClick={() => setActiveCaseStudySlug(slug)}
+      onKeyDown={(e) => e.key === 'Enter' && setActiveCaseStudySlug(slug)}
       style={{ 
         fontFamily: 'var(--font-mono)',
         borderLeft: '2px solid rgba(100,128,255,0.3)',

@@ -10,6 +10,7 @@ import { CursorCanvas } from "@/components/canvas/CursorCanvas";
 import { CardNav } from "@/components/nav/CardNav";
 import { WordmarkLogo } from "@/components/nav/WordmarkLogo";
 import { ContactDrawer } from "@/components/dashboard/ContactDrawer";
+import { CaseStudyModal } from "@/components/about/CaseStudyModal";
 import { LenisProvider } from "@/components/LenisProvider";
 import { Providers } from "@/components/Providers";
 
@@ -55,6 +56,7 @@ export default function RootLayout({
           <WordmarkLogo />
           <CardNav />
           <ContactDrawer />
+          <CaseStudyModal />
 
           <main className="relative z-10 min-h-screen">
             {children}

@@ -23,7 +23,6 @@ export type About = {
 };
 
 export async function getCaseStudies() {
-  if (typeof window !== 'undefined') return [];
   if (!directus.url || directus.url.toString().includes('fallback.invalid')) return [];
   try {
     return await directus.request(
@@ -39,7 +38,6 @@ export async function getCaseStudies() {
 }
 
 export async function getCaseStudy(slug: string) {
-  if (typeof window !== 'undefined') return undefined;
   if (!directus.url || directus.url.toString().includes('fallback.invalid')) return undefined;
   try {
     const items = await directus.request(
@@ -56,7 +54,6 @@ export async function getCaseStudy(slug: string) {
 }
 
 export async function getAbout() {
-  if (typeof window !== 'undefined') return null;
   if (!directus.url || directus.url.toString().includes('fallback.invalid')) return null;
   try {
     const items = await directus.request(

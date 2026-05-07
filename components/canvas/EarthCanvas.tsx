@@ -5,7 +5,6 @@ import * as THREE from "three";
 import { OrbitControls } from "three-stdlib";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import gsap from "gsap";
-import { usePathname } from "next/navigation";
 import { canvasSettings } from "@/lib/canvas-settings";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -17,10 +16,7 @@ gsap.registerPlugin(ScrollTrigger);
 export const EarthCanvas: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const blurRef = useRef<HTMLDivElement>(null);
-  const pathname = usePathname();
 
-  const isCaseStudyPage = pathname?.includes("/case-studies/") && pathname.split("/").length > 2;
-  const wasCaseStudyPageRef = useRef(false);
   const journey = canvasSettings.globe.scrollJourney;
 
   // State refs to persist Three.js objects across re-renders
@@ -50,20 +46,15 @@ export const EarthCanvas: React.FC = () => {
     let W = container.clientWidth;
     let H = container.clientHeight;
 
-    // Set initial values properly based on path and hash
-    if (isCaseStudyPage) {
-      stateRef.current.scrollState = { offX: 0, offY: 0, dist: 530 };
-    } else {
-      // Initial Position Awareness
-      const hash = typeof window !== 'undefined' ? window.location.hash : '';
-      let progress = 0;
-      if (hash === '#projects') progress = 1.0;
-      else if (hash === '#dashboard') progress = 0.5;
-      else if (hash === '#hero') progress = 0;
-      
-      const target = getGlobePosition(progress, W, H);
-      stateRef.current.scrollState = { ...target };
-    }
+    // Initial Position Awareness
+    const hash = typeof window !== 'undefined' ? window.location.hash : '';
+    let progress = 0;
+    if (hash === '#projects') progress = 1.0;
+    else if (hash === '#dashboard') progress = 0.5;
+    else if (hash === '#hero') progress = 0;
+    
+    const target = getGlobePosition(progress, W, H);
+    stateRef.current.scrollState = { ...target };
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const scene = new THREE.Scene();
@@ -235,7 +226,7 @@ export const EarthCanvas: React.FC = () => {
     return { offX: targetX, offY: targetY, dist: targetDist };
   };
 
-  // 2. Journey/Cinematic Transition Logic (Path Dependent)
+  // 2. Journey/Cinematic Transition Logic
   useEffect(() => {
     const s = stateRef.current;
     if (!s.camera || !s.controls) return;
@@ -251,9 +242,7 @@ export const EarthCanvas: React.FC = () => {
       }
 
       // Helper: Unify progress logic
-      const getCurrentProgress = (forcedValue?: number) => {
-        if (forcedValue !== undefined) return forcedValue;
-
+      const getCurrentProgress = () => {
         const hash = window.location.hash;
         if (hash === '#projects') return 1.0;
         if (hash === '#dashboard') return 0.5;
@@ -277,114 +266,54 @@ export const EarthCanvas: React.FC = () => {
         return Math.min(Math.max(currentScroll / totalScroll, 0), 1);
       };
 
-      if (isCaseStudyPage) {
-        // Transition to Cinematic Mode (Centered, 300% Zoom)
-        gsap.to(s.scrollState, {
-          offX: 0, offY: 0, dist: 530,
-          duration: 1.2, ease: "power3.inOut"
-        });
-        s.controls.minDistance = 530;
-        s.controls.maxDistance = 530;
-        s.camera.clearViewOffset();
-        
-        // Flag that we are in a case study so return transition can fire
-        wasCaseStudyPageRef.current = true;
-      } else {
-        // Transition BACK to Scroll Journey Mode (Home)
-        const performHomeTransition = () => {
-          const W = container.clientWidth;
-          const H = container.clientHeight;
+      const W = container.clientWidth;
+      const H = container.clientHeight;
 
-          // Detect if we are returning from a case study page
-          const isReturningFromCaseStudy = wasCaseStudyPageRef.current;
-          
-          // Force progress to 1.0 (bottom) if returning, as requested
-          const progress = getCurrentProgress(isReturningFromCaseStudy ? 1.0 : undefined);
-          const target = getGlobePosition(progress, W, H);
-
-          // Phase 1: Smoothly animate BOTH the globe state and the window scroll if returning
-          const landingTl = gsap.timeline({
-            onComplete: () => {
-              if (s.controls) {
-                s.controls.minDistance = 100;
-                s.controls.maxDistance = 5000;
-              }
-              
-              const journey = canvasSettings.globe.scrollJourney;
-              const tl = gsap.timeline();
-
-              // Build the journey timeline
-              tl.to(s.scrollState, { 
-                offX: journey.phase1.offX, offY: journey.phase1.offY, dist: journey.phase1.dist, 
-                duration: journey.phase1.duration, ease: journey.phase1.ease 
-              })
-              .to(s.scrollState, { 
-                offX: journey.phase2.offX, offY: journey.phase2.offY, dist: journey.phase2.dist, 
-                duration: journey.phase2.duration, ease: journey.phase2.ease 
-              })
-              .to(s.scrollState, { 
-                offX: W * journey.phase3.offXMult, offY: H * journey.phase3.offYMult, dist: journey.phase3.dist, 
-                duration: journey.phase3.duration, ease: journey.phase3.ease 
-              });
-
-              // Final sync check
-              const finalProgress = getCurrentProgress(isReturningFromCaseStudy ? 1.0 : undefined);
-              const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
-              
-              tl.progress(finalProgress);
-
-              // Attach the ScrollTrigger for this lifecycle
-              ScrollTrigger.create({
-                animation: tl,
-                trigger: "body", 
-                start: "top top", 
-                end: "bottom bottom", 
-                scrub: 1.5,
-                invalidateOnRefresh: true,
-                onUpdate: (self) => {
-                  s.lastProgress = self.progress;
-                }
-              });
-              
-              s.timeline = tl;
-              ScrollTrigger.refresh(true);
-              
-              // Clear the return flag after successful sync
-              wasCaseStudyPageRef.current = false;
-            }
-          });
-
-          // Animate Globe State
-          landingTl.to(s.scrollState, {
-            ...target,
-            duration: 1.2,
-            ease: "power3.inOut"
-          }, 0);
-
-          // If returning, also animate the window scroll to the bottom simultaneously
-          if (isReturningFromCaseStudy) {
-            const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
-            if (totalScroll > 0) {
-              const scrollProxy = { y: window.scrollY };
-              landingTl.to(scrollProxy, {
-                y: totalScroll,
-                duration: 1.2,
-                ease: "power3.inOut",
-                onUpdate: () => {
-                  window.scrollTo(0, scrollProxy.y);
-                }
-              }, 0);
-            }
-          }
-        };
-        
-        // Wait for Next.js to complete the route change
-        setTimeout(performHomeTransition, 30);
+      if (s.controls) {
+        s.controls.minDistance = 100;
+        s.controls.maxDistance = 5000;
       }
+      
+      const journey = canvasSettings.globe.scrollJourney;
+      const tl = gsap.timeline();
+
+      // Build the journey timeline
+      tl.to(s.scrollState, { 
+        offX: journey.phase1.offX, offY: journey.phase1.offY, dist: journey.phase1.dist, 
+        duration: journey.phase1.duration, ease: journey.phase1.ease 
+      })
+      .to(s.scrollState, { 
+        offX: journey.phase2.offX, offY: journey.phase2.offY, dist: journey.phase2.dist, 
+        duration: journey.phase2.duration, ease: journey.phase2.ease 
+      })
+      .to(s.scrollState, { 
+        offX: W * journey.phase3.offXMult, offY: H * journey.phase3.offYMult, dist: journey.phase3.dist, 
+        duration: journey.phase3.duration, ease: journey.phase3.ease 
+      });
+
+      // Final sync check
+      const finalProgress = getCurrentProgress();
+      tl.progress(finalProgress);
+
+      // Attach the ScrollTrigger for this lifecycle
+      ScrollTrigger.create({
+        animation: tl,
+        trigger: "body", 
+        start: "top top", 
+        end: "bottom bottom", 
+        scrub: 1.5,
+        invalidateOnRefresh: true,
+        onUpdate: (self) => {
+          s.lastProgress = self.progress;
+        }
+      });
+      
+      s.timeline = tl;
+      ScrollTrigger.refresh(true);
     });
 
     return () => ctx.revert();
-  }, [isCaseStudyPage, pathname]);
+  }, []);
 
   const glassSettings = canvasSettings.globe.glassmorphism;
 
