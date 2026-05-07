@@ -20,6 +20,7 @@ export const EarthCanvas: React.FC = () => {
   const pathname = usePathname();
 
   const isCaseStudyPage = pathname?.includes("/case-studies/") && pathname.split("/").length > 2;
+  const wasCaseStudyPageRef = useRef(false);
   const journey = canvasSettings.globe.scrollJourney;
 
   // State refs to persist Three.js objects across re-renders
@@ -33,6 +34,7 @@ export const EarthCanvas: React.FC = () => {
     scrollState: { offX: number; offY: number; dist: number };
     rafId?: number;
     timeline?: gsap.core.Timeline;
+    lastProgress?: number;
   }>({
     scrollState: { 
       offX: 0, 
@@ -48,15 +50,19 @@ export const EarthCanvas: React.FC = () => {
     let W = container.clientWidth;
     let H = container.clientHeight;
 
-    // Set initial values properly based on path
+    // Set initial values properly based on path and hash
     if (isCaseStudyPage) {
       stateRef.current.scrollState = { offX: 0, offY: 0, dist: 530 };
     } else {
-      stateRef.current.scrollState = { 
-        offX: W * journey.start.offXMult, 
-        offY: H * journey.start.offYMult, 
-        dist: journey.start.dist 
-      };
+      // Initial Position Awareness
+      const hash = typeof window !== 'undefined' ? window.location.hash : '';
+      let progress = 0;
+      if (hash === '#projects') progress = 1.0;
+      else if (hash === '#dashboard') progress = 0.5;
+      else if (hash === '#hero') progress = 0;
+      
+      const target = getGlobePosition(progress, W, H);
+      stateRef.current.scrollState = { ...target };
     }
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -74,7 +80,8 @@ export const EarthCanvas: React.FC = () => {
       powerPreference: "high-performance"
     });
     renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const dprMax = isMobile ? canvasSettings.performance.dprMaxMobile : canvasSettings.performance.dprMaxDesktop;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, dprMax));
     renderer.setClearColor(0x000000, 0); 
     container.appendChild(renderer.domElement);
 
@@ -174,9 +181,11 @@ export const EarthCanvas: React.FC = () => {
         const dPx = (RADIUS * 2.0 * innerScale * focalLength) / s.scrollState.dist;
         const sX = W / 2 - s.scrollState.offX;
         const sY = H / 2 - s.scrollState.offY;
-        blurRef.current.style.width = `${dPx}px`;
-        blurRef.current.style.height = `${dPx}px`;
-        blurRef.current.style.transform = `translate(${sX - dPx / 2}px, ${sY - dPx / 2}px)`;
+        
+        // GPU Accelerated Transform to avoid layout thrashing
+        // Base size is 100px, so we scale it to dPx
+        const scale = dPx / 100.0;
+        blurRef.current.style.transform = `translate(${sX - 50}px, ${sY - 50}px) scale(${scale})`;
       }
       s.renderer.render(s.scene, s.camera);
     };
@@ -200,108 +209,182 @@ export const EarthCanvas: React.FC = () => {
     };
   }, []); // Run once on mount
 
+  const getGlobePosition = (progress: number, W: number, H: number) => {
+    const journey = canvasSettings.globe.scrollJourney;
+    // start: offXMult negative = viewport shifts left = globe on RIGHT
+    let targetX = W * journey.start.offXMult;
+    let targetY = H * journey.start.offYMult;
+    let targetDist = journey.start.dist;
+    
+    if (progress < 0.33) {
+      const p = progress / 0.33;
+      targetX = gsap.utils.interpolate(W * journey.start.offXMult, journey.phase1.offX, p);
+      targetY = gsap.utils.interpolate(H * journey.start.offYMult, journey.phase1.offY, p);
+      targetDist = gsap.utils.interpolate(journey.start.dist, journey.phase1.dist, p);
+    } else if (progress < 0.66) {
+      const p = (progress - 0.33) / 0.33;
+      targetX = gsap.utils.interpolate(journey.phase1.offX, journey.phase2.offX, p);
+      targetY = gsap.utils.interpolate(journey.phase1.offY, journey.phase2.offY, p);
+      targetDist = gsap.utils.interpolate(journey.phase1.dist, journey.phase2.dist, p);
+    } else {
+      const p = (progress - 0.66) / 0.34;
+      targetX = gsap.utils.interpolate(journey.phase2.offX, W * journey.phase3.offXMult, p);
+      targetY = gsap.utils.interpolate(journey.phase2.offY, H * journey.phase3.offYMult, p);
+      targetDist = gsap.utils.interpolate(journey.phase2.dist, journey.phase3.dist, p);
+    }
+    return { offX: targetX, offY: targetY, dist: targetDist };
+  };
+
   // 2. Journey/Cinematic Transition Logic (Path Dependent)
   useEffect(() => {
     const s = stateRef.current;
     if (!s.camera || !s.controls) return;
-    const journey = canvasSettings.globe.scrollJourney;
     const container = containerRef.current;
     if (!container) return;
-    const W = container.clientWidth;
-    const H = container.clientHeight;
 
-    // Clean up existing timeline/triggers
-    if (s.timeline) {
-      s.timeline.kill();
-      s.timeline = undefined;
-    }
-    // Kill all scroll triggers to start fresh
-    ScrollTrigger.getAll().forEach(t => t.kill());
+    // Use GSAP Context for scoped management
+    const ctx = gsap.context(() => {
+      // Clean up previous local timeline
+      if (s.timeline) {
+        s.timeline.kill();
+        s.timeline = undefined;
+      }
 
-    if (isCaseStudyPage) {
-      // Transition to Cinematic Mode (Centered, 300% Zoom)
-      gsap.to(s.scrollState, {
-        offX: 0, offY: 0, dist: 530,
-        duration: 1.2, ease: "power3.inOut"
-      });
-      s.controls.minDistance = 530;
-      s.controls.maxDistance = 530;
-      s.camera.clearViewOffset();
-    } else {
-      // Transition BACK to Scroll Journey Mode (Home)
-      // Mirror the expansion with a smooth contraction to the CURRENT scroll position
-      
-      // Delay slightly to allow Next.js/Browser to restore scroll position
-      setTimeout(() => {
+      // Helper: Unify progress logic
+      const getCurrentProgress = (forcedValue?: number) => {
+        if (forcedValue !== undefined) return forcedValue;
+
+        const hash = window.location.hash;
+        if (hash === '#projects') return 1.0;
+        if (hash === '#dashboard') return 0.5;
+        if (hash === '#hero') return 0;
+
         const currentScroll = window.scrollY;
+        // Calculate the actual scrollable range
         const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
-        const progress = totalScroll > 0 ? Math.min(Math.max(currentScroll / totalScroll, 0), 1) : 0;
         
-        // Target values based on journey phases
-        let targetX = W * journey.start.offXMult;
-        let targetY = H * journey.start.offYMult;
-        let targetDist = journey.start.dist;
-        
-        if (progress < 0.33) {
-          const p = progress / 0.33;
-          targetX = gsap.utils.interpolate(W * journey.start.offXMult, journey.phase1.offX, p);
-          targetY = gsap.utils.interpolate(H * journey.start.offYMult, journey.phase1.offY, p);
-          targetDist = gsap.utils.interpolate(journey.start.dist, journey.phase1.dist, p);
-        } else if (progress < 0.66) {
-          targetX = journey.phase2.offX;
-          targetY = journey.phase2.offY;
-          targetDist = journey.phase2.dist;
-        } else {
-          const p = (progress - 0.66) / 0.34;
-          targetX = gsap.utils.interpolate(journey.phase2.offX, W * journey.phase3.offXMult, p);
-          targetY = gsap.utils.interpolate(journey.phase2.offY, H * journey.phase3.offYMult, p);
-          targetDist = gsap.utils.interpolate(journey.phase2.dist, journey.phase3.dist, p);
+        // CRITICAL: If the page hasn't settled (totalScroll <= 0), trust lastProgress
+        if (totalScroll <= 0 && s.lastProgress !== undefined) {
+          return s.lastProgress;
         }
+        
+        // If we just arrived and scroll is 0, trust lastProgress if it exists
+        if (currentScroll === 0 && s.lastProgress !== undefined) {
+          return s.lastProgress;
+        }
+        
+        if (totalScroll <= 0) return 0;
+        return Math.min(Math.max(currentScroll / totalScroll, 0), 1);
+      };
 
+      if (isCaseStudyPage) {
+        // Transition to Cinematic Mode (Centered, 300% Zoom)
         gsap.to(s.scrollState, {
-          offX: targetX,
-          offY: targetY,
-          dist: targetDist,
-          duration: 1.2,
-          ease: "power3.inOut",
-          onComplete: () => {
-            if (s.controls) {
-              s.controls.minDistance = 100;
-              s.controls.maxDistance = 5000;
-            }
-            
-            const tl = gsap.timeline({ 
-              scrollTrigger: { 
-                trigger: "body", start: "top top", end: "bottom bottom", scrub: 1.5,
-                invalidateOnRefresh: true
-              } 
-            });
-
-            tl.set(s.scrollState, {
-              offX: W * journey.start.offXMult,
-              offY: H * journey.start.offYMult,
-              dist: journey.start.dist
-            })
-            .to(s.scrollState, { 
-              offX: journey.phase1.offX, offY: journey.phase1.offY, dist: journey.phase1.dist, 
-              duration: journey.phase1.duration, ease: journey.phase1.ease 
-            })
-            .to(s.scrollState, { 
-              offX: journey.phase2.offX, offY: journey.phase2.offY, dist: journey.phase2.dist, 
-              duration: journey.phase2.duration, ease: journey.phase2.ease 
-            })
-            .to(s.scrollState, { 
-              offX: W * journey.phase3.offXMult, offY: H * journey.phase3.offYMult, dist: journey.phase3.dist, 
-              duration: journey.phase3.duration, ease: journey.phase3.ease 
-            });
-            
-            s.timeline = tl;
-            ScrollTrigger.refresh();
-          }
+          offX: 0, offY: 0, dist: 530,
+          duration: 1.2, ease: "power3.inOut"
         });
-      }, 50); // 50ms delay for scroll restoration
-    }
-  }, [isCaseStudyPage]);
+        s.controls.minDistance = 530;
+        s.controls.maxDistance = 530;
+        s.camera.clearViewOffset();
+        
+        // Flag that we are in a case study so return transition can fire
+        wasCaseStudyPageRef.current = true;
+      } else {
+        // Transition BACK to Scroll Journey Mode (Home)
+        const performHomeTransition = () => {
+          const W = container.clientWidth;
+          const H = container.clientHeight;
+
+          // Detect if we are returning from a case study page
+          const isReturningFromCaseStudy = wasCaseStudyPageRef.current;
+          
+          // Force progress to 1.0 (bottom) if returning, as requested
+          const progress = getCurrentProgress(isReturningFromCaseStudy ? 1.0 : undefined);
+          const target = getGlobePosition(progress, W, H);
+
+          // Phase 1: Smoothly animate BOTH the globe state and the window scroll if returning
+          const landingTl = gsap.timeline({
+            onComplete: () => {
+              if (s.controls) {
+                s.controls.minDistance = 100;
+                s.controls.maxDistance = 5000;
+              }
+              
+              const journey = canvasSettings.globe.scrollJourney;
+              const tl = gsap.timeline();
+
+              // Build the journey timeline
+              tl.to(s.scrollState, { 
+                offX: journey.phase1.offX, offY: journey.phase1.offY, dist: journey.phase1.dist, 
+                duration: journey.phase1.duration, ease: journey.phase1.ease 
+              })
+              .to(s.scrollState, { 
+                offX: journey.phase2.offX, offY: journey.phase2.offY, dist: journey.phase2.dist, 
+                duration: journey.phase2.duration, ease: journey.phase2.ease 
+              })
+              .to(s.scrollState, { 
+                offX: W * journey.phase3.offXMult, offY: H * journey.phase3.offYMult, dist: journey.phase3.dist, 
+                duration: journey.phase3.duration, ease: journey.phase3.ease 
+              });
+
+              // Final sync check
+              const finalProgress = getCurrentProgress(isReturningFromCaseStudy ? 1.0 : undefined);
+              const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
+              
+              tl.progress(finalProgress);
+
+              // Attach the ScrollTrigger for this lifecycle
+              ScrollTrigger.create({
+                animation: tl,
+                trigger: "body", 
+                start: "top top", 
+                end: "bottom bottom", 
+                scrub: 1.5,
+                invalidateOnRefresh: true,
+                onUpdate: (self) => {
+                  s.lastProgress = self.progress;
+                }
+              });
+              
+              s.timeline = tl;
+              ScrollTrigger.refresh(true);
+              
+              // Clear the return flag after successful sync
+              wasCaseStudyPageRef.current = false;
+            }
+          });
+
+          // Animate Globe State
+          landingTl.to(s.scrollState, {
+            ...target,
+            duration: 1.2,
+            ease: "power3.inOut"
+          }, 0);
+
+          // If returning, also animate the window scroll to the bottom simultaneously
+          if (isReturningFromCaseStudy) {
+            const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (totalScroll > 0) {
+              const scrollProxy = { y: window.scrollY };
+              landingTl.to(scrollProxy, {
+                y: totalScroll,
+                duration: 1.2,
+                ease: "power3.inOut",
+                onUpdate: () => {
+                  window.scrollTo(0, scrollProxy.y);
+                }
+              }, 0);
+            }
+          }
+        };
+        
+        // Wait for Next.js to complete the route change
+        setTimeout(performHomeTransition, 30);
+      }
+    });
+
+    return () => ctx.revert();
+  }, [isCaseStudyPage, pathname]);
 
   const glassSettings = canvasSettings.globe.glassmorphism;
 
@@ -311,6 +394,9 @@ export const EarthCanvas: React.FC = () => {
         ref={blurRef} 
         className="absolute top-0 left-0 rounded-full"
         style={{ 
+          width: "100px",
+          height: "100px",
+          transformOrigin: "center",
           backdropFilter: `blur(${glassSettings.blur}px) saturate(${glassSettings.saturate})`, 
           background: `rgba(255, 255, 255, ${glassSettings.opacity})`, 
           border: glassSettings.border,

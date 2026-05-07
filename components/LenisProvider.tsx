@@ -13,6 +13,10 @@ export const LenisProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       smoothWheel: true,
     });
 
+    // @ts-ignore
+    window.lenis = lenis;
+    console.log("Lenis initialized:", lenis);
+
     lenis.on("scroll", ScrollTrigger.update);
 
     gsap.ticker.add((time) => {

@@ -3,6 +3,8 @@
 import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
 
+import { canvasSettings } from "@/lib/canvas-settings";
+
 // DustCanvas — Consolidates 3D atmospheric dust and 2D high-speed streaks
 // — Dash
 
@@ -18,6 +20,7 @@ export const DustCanvas: React.FC = () => {
     const H = container.clientHeight;
 
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const dprMax = isMobile ? canvasSettings.performance.dprMaxMobile : canvasSettings.performance.dprMaxDesktop;
 
     // ─── 3D Ambient Dust (Three.js) ──────────────────────────────────────────
     const scene = new THREE.Scene();
@@ -26,7 +29,7 @@ export const DustCanvas: React.FC = () => {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, dprMax));
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
@@ -69,7 +72,7 @@ export const DustCanvas: React.FC = () => {
     // ─── 2D High-Speed Streaks (Canvas) ──────────────────────────────────────
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const dpr = Math.min(window.devicePixelRatio, 2);
+    const dpr = Math.min(window.devicePixelRatio, dprMax);
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     ctx.scale(dpr, dpr);

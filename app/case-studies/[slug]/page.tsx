@@ -23,9 +23,40 @@ export async function generateStaticParams() {
   }
 }
 
+const MOCK_POSTS: Record<string, any> = {
+  "enterprise-portfolio": {
+    title: "Enterprise Portfolio Platform",
+    hook: "Designed a SpaceX/NVIDIA-inspired portfolio platform with mission-control aesthetic, live data, and secure authentication.",
+    stack: "n8n, React, Directus, Docker",
+    body: "## Overview\nThis project was designed to showcase high-end technical capabilities with a cinematic flair. \n\n### Challenges\n- Real-time data synchronization\n- Glassmorphism at scale\n- Performance optimization for 3D backgrounds\n\n### Solution\nImplementing a robust GSAP-driven animation system and a persistent Three.js globe.",
+  },
+  "rag-assistant": {
+    title: "Self-Hosted RAG Research Assistant",
+    hook: "Self-hosted full RAG research assistant on a homelab — private, fast, and grounded in a personal document library.",
+    stack: "n8n, Qdrant, Claude API, Docker",
+    body: "## Overview\nA private alternative to cloud-based AI assistants, focusing on data sovereignty and speed.",
+  },
+  "youtube-ingestion": {
+    title: "YouTube Knowledge Ingestion Pipeline",
+    hook: "Automated the conversion of YouTube videos into structured Obsidian knowledge base entries.",
+    stack: "n8n, YouTube API, Obsidian, Python",
+    body: "## Overview\nStreamlining knowledge management by automating the extraction of transcripts and metadata.",
+  },
+  "lead-funnel": {
+    title: "AI Lead Qualification Funnel",
+    hook: "Built a multi-node AI pipeline that scores, qualifies, and routes inbound leads using custom business logic.",
+    stack: "n8n, Claude API, Telegram, PostgreSQL",
+    body: "## Overview\nReducing manual overhead by 90% through intelligent lead scoring and automated routing.",
+  }
+};
+
 export default async function CaseStudyPage({ params }: Props) {
   const { slug } = await params;
-  const post = await getCaseStudy(slug);
+  let post = await getCaseStudy(slug);
+
+  if (!post && MOCK_POSTS[slug]) {
+    post = { ...MOCK_POSTS[slug], slug };
+  }
 
   if (!post) {
     notFound();
@@ -38,7 +69,7 @@ export default async function CaseStudyPage({ params }: Props) {
     <article className="min-h-screen pt-40 pb-20 px-6 flex flex-col items-center" style={{ fontFamily: 'var(--font-mono)' }}>
       <div className="max-w-4xl w-full p-8 md:p-16 glass-panel rounded-[40px] relative overflow-hidden border-white/10">
         <Link 
-          href="/case-studies" 
+          href="/" 
           className="text-accent-label text-secondary hover:text-accent transition-colors flex items-center gap-2 mb-12"
         >
           <span>←</span> BACK_TO_CASE_STUDIES

@@ -97,12 +97,9 @@ export const CaseStudiesPanel: React.FC<CaseStudiesPanelProps> = ({ caseStudies 
           <span className="text-meta opacity-60">
             TOTAL <span className="text-white">{displayStudies.length}</span>
           </span>
-          <Link
-            href="/case-studies"
-            className="text-accent-label text-accent flex items-center gap-1 hover:opacity-70 transition-opacity"
-          >
+          <div className="text-accent-label text-accent/30 flex items-center gap-1 cursor-default">
             VIEW_ALL <ArrowUpRight className="w-3 h-3" />
-          </Link>
+          </div>
         </div>
       </div>
 

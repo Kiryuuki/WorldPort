@@ -28,19 +28,23 @@ export const AuroraCanvas: React.FC = () => {
     let W = container.clientWidth;
     let H = container.clientHeight;
 
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const dprMax = isMobile ? canvasSettings.performance.dprMaxMobile : canvasSettings.performance.dprMaxDesktop;
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 10000);
     camera.position.set(0, 0, 1600);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, dprMax));
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
     const smokeEvents: SmokeEvent[] = [];
     const auroraSettings = canvasSettings.aurora;
-    const MAX_SMOKE_CLOUDS = auroraSettings.maxEvents;
+    // Reduce max events on mobile for performance
+    const MAX_SMOKE_CLOUDS = isMobile ? Math.max(1, Math.floor(auroraSettings.maxEvents * 0.5)) : auroraSettings.maxEvents;
 
     const smokeGeometry = new THREE.PlaneGeometry(3500, 1800);
 
@@ -49,6 +53,8 @@ export const AuroraCanvas: React.FC = () => {
 
       const colors = auroraSettings.colors;
       const selectedColor = colors[Math.floor(Math.random() * colors.length)];
+      
+      const octaves = isMobile ? "2" : "4";
 
       const mat = new THREE.ShaderMaterial({
         uniforms: {
@@ -73,7 +79,7 @@ export const AuroraCanvas: React.FC = () => {
           }
           float fbm(vec2 p){
             float v=0.,a=0.5;
-            for(int i=0;i<4;i++){v+=a*noise(p);p*=2.;a*=.5;}
+            for(int i=0;i<${octaves};i++){v+=a*noise(p);p*=2.;a*=.5;}
             return v;
           }
           void main(){

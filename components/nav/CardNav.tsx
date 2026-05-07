@@ -7,23 +7,34 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const NAV_LINKS = [
-  { href: '#hero',      label: 'HOME' },
-  { href: '#dashboard', label: 'DASHBOARD' },
-  { href: '#projects',  label: 'CASE STUDIES' },
+  { href: '/#hero',      label: 'HOME' },
+  { href: '/#dashboard', label: 'DASHBOARD' },
+  { href: '/#projects',  label: 'CASE STUDIES' },
 ];
 
 export function CardNav() {
   const pathname = usePathname();
 
   const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    if (href.startsWith('#')) {
+    // Only intercept if we are already on the home page
+    if (href.includes('#') && pathname === '/') {
       e.preventDefault();
-      const id = href.replace('#', '');
+      const id = href.split('#')[1];
       const element = document.getElementById(id);
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
+        // Use Lenis if available for smoother/synchronized scroll
+        // @ts-ignore
+        if (window.lenis && typeof window.lenis.scrollTo === 'function') {
+          // @ts-ignore
+          window.lenis.scrollTo(id === 'projects' ? 'bottom' : element, { duration: 1.5 });
+        } else {
+          // Fallback to window.scrollTo which Lenis also intercepts
+          const targetY = id === 'projects' ? document.documentElement.scrollHeight : element.offsetTop;
+          window.scrollTo({ top: targetY, behavior: 'smooth' });
+        }
       }
     }
+    // If we are on a subpage, let the default link behavior take us to the home page with the hash
   };
 
   return (
@@ -46,7 +57,9 @@ export function CardNav() {
       }}
     >
       {NAV_LINKS.map(({ href, label }) => {
-        const active = pathname === href;
+        // Active logic: if we are on root, check the hash (TBD: could be improved)
+        // For now, if we are on root, we show all as inactive or use a simpler check
+        const active = pathname === '/'; 
         return (
           <a
             key={href}
@@ -61,9 +74,9 @@ export function CardNav() {
               fontWeight: 400,
               textDecoration: 'none',
               transition: 'background 0.15s, color 0.15s',
-              background: active ? 'rgba(255,255,255,0.10)' : 'transparent',
+              background: 'transparent',
               color: 'rgba(255,255,255,0.92)',
-              opacity: active ? 1 : 0.45,
+              opacity: pathname === '/' ? 1 : 0.45,
               whiteSpace: 'nowrap',
               cursor: 'pointer',
             }}

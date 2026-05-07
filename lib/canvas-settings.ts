@@ -4,6 +4,13 @@
  */
 
 export const canvasSettings = {
+  // ─── PERFORMANCE ────────────────────────────────────────────────────────
+  performance: {
+    // Max Device Pixel Ratio. Caps at 1.5 for desktop to avoid 4K/5K thermal throttling, and 1.0 on mobile to prevent crashes.
+    dprMaxDesktop: 1.5,
+    dprMaxMobile: 1.0,
+  },
+
   // ─── STARS ──────────────────────────────────────────────────────────────
   stars: {
     // [far, mid, near]
@@ -43,34 +50,45 @@ export const canvasSettings = {
       boxShadow: "inset 0 0 50px rgba(0, 0, 0, 0.4)",
     },
     scrollJourney: {
-      // Starting state (0% scroll)
+      // ── setViewOffset behavior (THREE.js verified) ──────────────────────
+      // camera.setViewOffset(fullW, fullH, x, y, subW, subH)
+      // x = subview left edge offset from full view left edge
+      // POSITIVE x → subview shifts RIGHT → camera sees LEFT → globe appears LEFT
+      // NEGATIVE x → subview shifts LEFT  → camera sees RIGHT → globe appears RIGHT ✓
+      // POSITIVE y → subview shifts DOWN  → camera sees UP   → globe appears UPPER
+      // NEGATIVE y → subview shifts UP    → camera sees DOWN → globe appears LOWER ✓
+      // ─────────────────────────────────────────────────────────────────────
+
+      // Starting state (0% scroll) — Globe on RIGHT side only, hero text fills left
+      // NEGATIVE offXMult → more negative = further right
       start: {
-        offXMult: -0.25,      // Corner right
-        offYMult: -0.1,
-        dist: 1400,
+        offXMult: -0.25,   // Pushed significantly to the right
+        offYMult: 0.05,    // Centered vertically slightly better
+        dist: 1300,        // Ensure it's large enough to cover the right side
       },
-      // Phase 1 (0% - 33%): Globe moves from corner to absolute center.
+      // Phase 1 (0% → 33%): Globe sweeps center
       phase1: {
-        duration: 1, 
+        duration: 1,
         offX: 0,
         offY: 0,
-        dist: 1600,
+        dist: 1550,
         ease: "power2.inOut"
       },
-      // Phase 2 (33% - 66%): Globe stays in the center (Dashboard focus).
+      // Phase 2 (33% → 66%): Globe holds center — dashboard (100% size)
       phase2: {
         duration: 1,
         offX: 0,
         offY: 0,
-        dist: 1600,
+        dist: 1550,
         ease: "none"
       },
-      // Phase 3 (66% - 100%): Globe moves to zoomed-in center position.
+      // Phase 3 (66% → 100%): Globe zoomed in, bottom-center, partially visible
+      // NEGATIVE offYMult → more negative = globe sinks lower
       phase3: {
         duration: 1,
-        offXMult: 0,          // Center
-        offYMult: -0.75,      // Bottom
-        dist: 950,            // Zoomed in
+        offXMult: 0,
+        offYMult: -0.85,   // Pushes globe significantly DOWN
+        dist: 775,         // Zoomed to ~200% (half of 1550)
         ease: "power2.inOut"
       }
     }
