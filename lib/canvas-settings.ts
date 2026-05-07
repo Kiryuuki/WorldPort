@@ -72,7 +72,7 @@ export const canvasSettings = {
         offX: 0,
         offY: 0,
         dist: 1550,
-        ease: "power2.inOut"
+        ease: "none"
       },
       // Phase 2 (33% → 66%): Globe holds center — dashboard (100% size)
       phase2: {
@@ -89,7 +89,7 @@ export const canvasSettings = {
         offXMult: 0,
         offYMult: -0.85,   // Pushes globe significantly DOWN
         dist: 775,         // Zoomed to ~200% (half of 1550)
-        ease: "power2.inOut"
+        ease: "none"
       }
     }
   },

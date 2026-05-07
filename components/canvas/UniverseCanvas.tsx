@@ -124,7 +124,7 @@ export const UniverseCanvas: React.FC<{ projects: Project[] }> = ({ projects }) 
       window.removeEventListener("click", onClick);
       container.removeChild(renderer.domElement);
     };
-  }, [projects, router]);
+  }, [projects]);
 
   return (
     <div ref={containerRef} className="w-full h-full relative cursor-pointer">

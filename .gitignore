@@ -34,6 +34,11 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env*
+*.key
+*.cert
+secrets.json
+.npmrc
 
 # vercel
 .vercel
